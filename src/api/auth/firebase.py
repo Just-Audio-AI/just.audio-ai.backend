@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, status
 
 from src.dependency import get_auth_service
 from src.schemas import UserTokenResponseSchema
@@ -6,12 +6,12 @@ from src.service.auth import AuthService
 
 router = APIRouter(
     tags=["firebase"],
-    prefix="/auth",
+    prefix="/auth/firebase",
 )
 
 
 @router.post(
-    "/firebase/auth-by-firebase-token",
+    "/auth-by-firebase-token",
     description="Создать пользователя по токену firebase",
     response_model=UserTokenResponseSchema,
 )

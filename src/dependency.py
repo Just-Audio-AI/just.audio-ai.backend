@@ -3,6 +3,8 @@ from typing import Annotated
 import firebase_admin
 from firebase_admin import App as FirebaseApp, credentials
 from fastapi import Depends
+
+from src.client.mail_client import MailClient
 from src.client.s3_client import S3Client
 from src.repository.products_repository import ProductsRepository
 from src.repository.user_file_repository import UserFileRepository
@@ -70,8 +72,8 @@ async def get_auth_service(
         user_repository=user_repository,
         settings=settings,
         firebase_client=firebase_client,
+        mail_client=MailClient(settings=settings),
     )
-
 
 async def get_products_repository(db: DB) -> ProductsRepository:
     return ProductsRepository(db=db)

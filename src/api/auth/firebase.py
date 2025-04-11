@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends
 
 from src.dependency import get_auth_service
 from src.schemas import UserTokenResponseSchema
@@ -20,4 +20,6 @@ async def auth_by_firebase_token(
     auth_service: AuthService = Depends(get_auth_service),
 ):
     user_data = await auth_service.auth_by_firebase_token(token=token)
-    return UserTokenResponseSchema(user_id=user_data.get("user_id"), access_token=user_data.get("access_token"))
+    return UserTokenResponseSchema(
+        user_id=user_data.get("user_id"), access_token=user_data.get("access_token")
+    )

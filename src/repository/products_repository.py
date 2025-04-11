@@ -3,6 +3,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.models.products import Products
 
+
 @dataclass
 class ProductsRepository:
     db: AsyncSession

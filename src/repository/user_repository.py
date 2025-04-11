@@ -22,10 +22,14 @@ class UserRepository:
             query = select(User).where(User.firebase_token == firebase_token)
             return (await session.execute(query)).scalar_one_or_none()
 
-    async def create_user_by_firebase_token(self, firebase_token: str, email: str | None = None) -> User:
+    async def create_user_by_firebase_token(
+        self, firebase_token: str, email: str | None = None
+    ) -> User:
         async with self.db as session:
             if email:
-                user = (await session.execute(select(User).where(User.email == email))).scalar_one_or_none()
+                user = (
+                    await session.execute(select(User).where(User.email == email))
+                ).scalar_one_or_none()
                 if user is None:
                     return await self._create_and_get_user_by_firebase(firebase_token)
                 else:
@@ -38,7 +42,9 @@ class UserRepository:
 
     async def _create_and_get_user_by_firebase(self, firebase_token: str) -> User:
         async with self.db as session:
-            query = insert(User).values(firebase_token=firebase_token).returning(User.id)
+            query = (
+                insert(User).values(firebase_token=firebase_token).returning(User.id)
+            )
             user_id = (await session.execute(query)).scalar_one_or_none()
             await session.commit()
             await session.flush()
@@ -73,7 +79,11 @@ class UserRepository:
 
     async def create_user(self, user: UserCreate) -> int:
         async with self.db as session:
-            query = insert(User).values(**user.model_dump(exclude_none=True)).returning(User.id)
+            query = (
+                insert(User)
+                .values(**user.model_dump(exclude_none=True))
+                .returning(User.id)
+            )
             res = (await session.execute(query)).scalar()
             await session.commit()
             return res
@@ -93,14 +103,20 @@ class UserRepository:
             await session.flush()
             return
 
-    async def get_code_with_email(self, email: str, code: int) -> UserEmailWithCode | None:
+    async def get_code_with_email(
+        self, email: str, code: int
+    ) -> UserEmailWithCode | None:
         async with self.db as session:
-            query = select(UserEmailWithCode).where(UserEmailWithCode.email == email, UserEmailWithCode.code == code)
+            query = select(UserEmailWithCode).where(
+                UserEmailWithCode.email == email, UserEmailWithCode.code == code
+            )
             return (await session.execute(query)).scalar_one_or_none()
 
     async def delete_all_email_codes(self, email: str) -> None:
         async with self.db as session:
-            await session.execute(delete(UserEmailWithCode).where(UserEmailWithCode.email == email))
+            await session.execute(
+                delete(UserEmailWithCode).where(UserEmailWithCode.email == email)
+            )
             await session.commit()
             await session.flush()
             return

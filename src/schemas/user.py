@@ -6,8 +6,6 @@ class UserTokenResponseSchema(BaseModel):
     access_token: str
 
 
-
-
 class User(BaseModel):
     username: str | None = None
     email: EmailStr

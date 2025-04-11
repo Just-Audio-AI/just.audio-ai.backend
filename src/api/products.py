@@ -9,6 +9,7 @@ router = APIRouter(
     prefix="/products",
 )
 
+
 @router.get(
     "/active",
     response_model=list[ProductsSchema],

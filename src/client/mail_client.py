@@ -5,6 +5,7 @@ from email.mime.text import MIMEText
 
 from src.settings import Settings
 
+
 class MailClient:
     def __init__(self, settings: Settings):
         self.from_email = settings.from_email
@@ -13,7 +14,9 @@ class MailClient:
         self.smtp_password = settings.SMTP_PASSWORD
 
     async def send_code(self, code: int, to: str) -> None:
-        msg = await self.__build_message(f"Fitra auth code {code}", f"Your code is {code}", to)
+        msg = await self.__build_message(
+            f"Fitra auth code {code}", f"Your code is {code}", to
+        )
         await self.__send_message(msg)
 
     async def __build_message(self, subject: str, text: str, to: str) -> MIMEMultipart:

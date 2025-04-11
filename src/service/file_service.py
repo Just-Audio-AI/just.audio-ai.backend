@@ -1,6 +1,7 @@
 from dataclasses import dataclass
+import re
 
-from fastapi import UploadFile, File
+from fastapi import File, UploadFile
 
 from src.client.s3_client import S3Client
 
@@ -17,7 +18,25 @@ class FileService:
         :param user_id: User ID for identifying the uploader.
         :return: URL of the uploaded file.
         """
+        clean_filename = self.clean_filename(file.filename)
+        file.filename = clean_filename
         return self.s3_client.upload_file(file, user_id)
+
+    @staticmethod
+    def clean_filename(filename: str) -> str:
+        """
+        Clean filename from invalid URL characters.
+
+        :param filename: Original filename
+        :return: Cleaned filename
+        """
+        # Replace spaces and special characters
+        clean_name = re.sub(r"[^\w\-_.]", "_", filename)
+        # Remove multiple consecutive underscores
+        clean_name = re.sub(r"_+", "_", clean_name)
+        # Remove leading/trailing underscores
+        clean_name = clean_name.strip("_")
+        return clean_name
 
     @staticmethod
     def get_public_bucket() -> set[str]:

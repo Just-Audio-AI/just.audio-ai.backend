@@ -26,15 +26,27 @@ class AuthService:
         decoded_email = decoded_token["firebase"]["identities"].get("email")[0]
         user_uid = decoded_token["uid"]
 
-        if exists_user := await self.user_repository.get_user_by_firebase_token(user_uid):
+        if exists_user := await self.user_repository.get_user_by_firebase_token(
+            user_uid
+        ):
             access_token = await self._create_token(exists_user.id)
-            return {"user_id": exists_user.id, "access_token": access_token.get("access_token")}
+            return {
+                "user_id": exists_user.id,
+                "access_token": access_token.get("access_token"),
+            }
 
-        user = await self.user_repository.create_user_by_firebase_token(user_uid, email=decoded_email)
-        return {"user_id": user.id, "access_token": (await self._create_token(user.id)).get("access_token")}
+        user = await self.user_repository.create_user_by_firebase_token(
+            user_uid, email=decoded_email
+        )
+        return {
+            "user_id": user.id,
+            "access_token": (await self._create_token(user.id)).get("access_token"),
+        }
 
     async def verify_auth_code(self, email: str, code: int) -> dict:
-        if code_with_email_link := await self.user_repository.get_code_with_email(email, code):
+        if code_with_email_link := await self.user_repository.get_code_with_email(
+            email, code
+        ):
             utc_now = datetime.now(tz=None)
             if code_with_email_link.code != code:
                 raise CodeNotFoundExceptions
@@ -43,10 +55,16 @@ class AuthService:
 
             user_id = await self.get_or_create_user(user=UserCreate(email=email))
             access_token = await asyncio.gather(
-                *[self._create_token(user_id), self.user_repository.delete_all_email_codes(email)]
+                *[
+                    self._create_token(user_id),
+                    self.user_repository.delete_all_email_codes(email),
+                ]
             )
 
-            return {"user_id": user_id, "access_token": access_token[0].get("access_token")}
+            return {
+                "user_id": user_id,
+                "access_token": access_token[0].get("access_token"),
+            }
 
         raise CodeNotFoundExceptions
 
@@ -62,7 +80,9 @@ class AuthService:
         await self.user_repository.save_code_with_email(email, code)
 
     async def _create_token(self, user_id: int) -> dict:
-        access_token_expires = timedelta(minutes=self.settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+        access_token_expires = timedelta(
+            minutes=self.settings.ACCESS_TOKEN_EXPIRE_MINUTES
+        )
         return {
             "access_token": await self._create_access_token(
                 data={"user_id": user_id}, expires_delta=access_token_expires
@@ -78,7 +98,11 @@ class AuthService:
         else:
             expire = datetime.now(tz=UTC) + timedelta(minutes=15)
         to_encode.update({"exp": expire, "sub": "access"})
-        encoded_jwt = jwt.encode(to_encode, self.settings.token_secret, algorithm=self.settings.token_algorithm)
+        encoded_jwt = jwt.encode(
+            to_encode,
+            self.settings.token_secret,
+            algorithm=self.settings.token_algorithm,
+        )
         return encoded_jwt
 
     @staticmethod

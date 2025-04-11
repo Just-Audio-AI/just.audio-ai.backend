@@ -13,9 +13,8 @@ class Base(DeclarativeBase):
     __name__: str
 
     __allow_unmapped__ = True
-    type_annotation_map = {
-        dict[str, Any]: JSON
-    }
+    type_annotation_map = {dict[str, Any]: JSON}
+
     @declared_attr
     def __tablename__(self) -> str:
         return self.__name__.lower()
@@ -30,7 +29,9 @@ class Base(DeclarativeBase):
             db_session.add(self)
             return await db_session.commit()
         except SQLAlchemyError as ex:
-            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=repr(ex)) from ex
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=repr(ex)
+            ) from ex
 
     async def delete(self, db_session: AsyncSession):
         """
@@ -43,7 +44,9 @@ class Base(DeclarativeBase):
             await db_session.commit()
             return True
         except SQLAlchemyError as ex:
-            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=repr(ex)) from ex
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=repr(ex)
+            ) from ex
 
     async def update(self, db: AsyncSession, **kwargs):
         """
@@ -57,7 +60,9 @@ class Base(DeclarativeBase):
                 setattr(self, k, v)
             return await db.commit()
         except SQLAlchemyError as ex:
-            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=repr(ex)) from ex
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=repr(ex)
+            ) from ex
 
     async def save_or_update(self, db: AsyncSession):
         try:

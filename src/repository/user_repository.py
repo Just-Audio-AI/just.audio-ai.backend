@@ -1,8 +1,9 @@
+import datetime as dt
 from dataclasses import dataclass
 
 from sqlalchemy import delete, insert, select
 from sqlalchemy.ext.asyncio import AsyncSession
-import datetime as dt
+
 from src.models import User, UserEmailWithCode
 from src.schemas.user import UserCreate
 
@@ -23,7 +24,7 @@ class UserRepository:
             return (await session.execute(query)).scalar_one_or_none()
 
     async def create_user_by_firebase_token(
-        self, firebase_token: str, email: str | None = None
+        self, firebase_token: str, name: str | None = None, email: str | None = None
     ) -> User:
         async with self.db as session:
             if email:
@@ -31,19 +32,19 @@ class UserRepository:
                     await session.execute(select(User).where(User.email == email))
                 ).scalar_one_or_none()
                 if user is None:
-                    return await self._create_and_get_user_by_firebase(firebase_token)
+                    return await self._create_and_get_user_by_firebase(firebase_token, email, name)
                 else:
                     user.firebase_token = firebase_token
                     await session.commit()
                     await session.flush()
                     return user
             else:
-                return await self._create_and_get_user_by_firebase(firebase_token)
+                return await self._create_and_get_user_by_firebase(firebase_token, name, email)
 
-    async def _create_and_get_user_by_firebase(self, firebase_token: str) -> User:
+    async def _create_and_get_user_by_firebase(self, firebase_token: str, email: str, name: str | None = None) -> User:
         async with self.db as session:
             query = (
-                insert(User).values(firebase_token=firebase_token).returning(User.id)
+                insert(User).values(firebase_token=firebase_token, email=email, name=name).returning(User.id)
             )
             user_id = (await session.execute(query)).scalar_one_or_none()
             await session.commit()
@@ -90,13 +91,12 @@ class UserRepository:
 
     async def save_code_with_email(self, email: str, code: int) -> None:
         async with self.db as session:
-            expires_at = dt.datetime.utcnow() + dt.timedelta(minutes=25)
+            expires_at = dt.datetime.now(tz=dt.UTC) + dt.timedelta(minutes=25)
             await session.execute(
                 insert(UserEmailWithCode).values(
                     email=email,
                     code=code,
-                    expires_at=expires_at,
-                    created_at=dt.datetime.utcnow(),
+                    expires_at=expires_at.replace(tzinfo=None),
                 )
             )
             await session.commit()

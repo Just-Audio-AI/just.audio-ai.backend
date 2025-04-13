@@ -1,8 +1,8 @@
-from src.schemas.user import UserTokenResponseSchema
 from src.schemas.auth import UserEmail, UserEmailCodeRequest
+from src.schemas.user import UserTokenResponse
 
 __all__ = [
-    "UserTokenResponseSchema",
+    "UserTokenResponse",
     "UserEmail",
     "UserEmailCodeRequest",
 ]

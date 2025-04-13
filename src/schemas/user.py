@@ -1,10 +1,15 @@
 from pydantic import BaseModel, EmailStr
 
 
-class UserTokenResponseSchema(BaseModel):
+class UserTokenResponse(BaseModel):
+    """Response model for authentication endpoints"""
+
     user_id: int
     access_token: str
 
+class UserTokenRequest(BaseModel):
+    """Request model for authentication endpoints"""
+    token: str
 
 class User(BaseModel):
     username: str | None = None

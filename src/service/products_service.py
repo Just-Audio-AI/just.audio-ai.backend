@@ -1,6 +1,7 @@
+from dataclasses import dataclass
+
 from src.models import Products
 from src.repository.products_repository import ProductsRepository
-from dataclasses import dataclass
 
 
 @dataclass

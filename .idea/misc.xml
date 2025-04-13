@@ -3,4 +3,5 @@
   <component name="Black">
     <option name="sdkName" value="Python 3.12 (audio_to_text)" />
   </component>
+  <component name="ProjectRootManager" version="2" project-jdk-name="Python 3.13 virtualenv at ~/personal/audio_to_text/src/.env" project-jdk-type="Python SDK" />
 </project>

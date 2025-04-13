@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 
+from src.models import UserFile
 from src.models.enums import FileProcessingStatus
 from src.repository.user_file_repository import UserFileRepository
 
@@ -17,15 +18,27 @@ class UserFileService:
             transcription=transcription_result,
         )
 
+    async def update_files_status(
+        self, file_ids: list[int], status: FileProcessingStatus
+    ) -> None:
+        await self.user_file_repository.update_files_status(
+            file_ids=file_ids,
+            status=status.value,
+        )
+
     async def create_user_file(
         self, user_id: int, file_url: str, status: str, display_filename: str
     ):
-        await self.user_file_repository.create_user_file(
+        return await self.user_file_repository.create_user_file(
             user_id=user_id,
             file_url=file_url,
-            status=FileProcessingStatus.PROCESSING.value,
+            status=status,
             display_filename=display_filename,
         )
 
-    async def get_user_file(self, user_id: int, file_id: int):
-        return await self.user_file_repository.get_user_file(user_id, file_id)
+    async def get_user_file(self, user_id: int, file_ids: list[int]) -> list[UserFile]:
+        return await self.user_file_repository.get_user_file(user_id, file_ids)
+
+    async def get_user_files(self, user_id: int, status: FileProcessingStatus = None):
+        status_value = status.value if status else None
+        return await self.user_file_repository.get_user_files(user_id, status_value)

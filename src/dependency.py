@@ -1,25 +1,24 @@
+import os
+from collections.abc import AsyncGenerator
 from typing import Annotated
 
 import firebase_admin
-from firebase_admin import App as FirebaseApp, credentials
 from fastapi import Depends
+from firebase_admin import App as FirebaseApp
+from firebase_admin import credentials
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from src.client.mail_client import MailClient
 from src.client.s3_client import S3Client
 from src.client.whisper_ai_client import WhisperAIClient
+from src.repository.payment.user_payment_repository import UserPaymentRepository
 from src.repository.products_repository import ProductsRepository
 from src.repository.user_file_repository import UserFileRepository
 from src.repository.user_repository import UserRepository
 from src.service.audio_convert_service import AudioConvertService
 from src.service.auth import AuthService
 from src.service.file_service import FileService
-
-
-import os
-from collections.abc import AsyncGenerator
-
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
-
+from src.service.payment.user_payment import UserPaymentService
 from src.service.products_service import ProductsService
 from src.service.user_file_service import UserFileService
 from src.settings import settings
@@ -117,3 +116,12 @@ async def get_products_service(
     products_repository: Annotated[ProductsRepository, Depends(get_products_repository)]
 ) -> ProductsService:
     return ProductsService(products_repository=products_repository)
+
+
+async def get_user_payment_repository(db: DB) -> UserPaymentRepository:
+    return UserPaymentRepository(db=db)
+
+async def get_user_payment_service(
+    user_payment_repository: Annotated[UserPaymentRepository, Depends(get_user_payment_repository)]
+):
+    return UserPaymentService(user_payment_repository=user_payment_repository)

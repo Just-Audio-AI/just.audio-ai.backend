@@ -1,25 +1,22 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Body
 
 from src.dependency import get_auth_service
-from src.schemas import UserTokenResponseSchema
+from src.schemas.user import UserTokenResponse, UserTokenRequest
 from src.service.auth import AuthService
 
 router = APIRouter(
     tags=["firebase"],
-    prefix="/auth/firebase",
+    prefix="/auth",
 )
 
 
 @router.post(
-    "/auth-by-firebase-token",
+    "/firebase",
     description="Создать пользователя по токену firebase",
-    response_model=UserTokenResponseSchema,
+    response_model=UserTokenResponse,
 )
 async def auth_by_firebase_token(
-    token: str,
+    body: UserTokenRequest,
     auth_service: AuthService = Depends(get_auth_service),
 ):
-    user_data = await auth_service.auth_by_firebase_token(token=token)
-    return UserTokenResponseSchema(
-        user_id=user_data.get("user_id"), access_token=user_data.get("access_token")
-    )
+    return await auth_service.auth_by_firebase_token(token=body.token)

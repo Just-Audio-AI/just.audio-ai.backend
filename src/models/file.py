@@ -2,11 +2,11 @@ from datetime import datetime
 from typing import Optional
 from uuid import UUID
 
-from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy import ForeignKey, func
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
-from src.models import Base
+from src.models.base import Base
 
 
 class UserFile(Base):
@@ -21,4 +21,5 @@ class UserFile(Base):
     transcription: Mapped[Optional[dict]] = mapped_column(
         JSONB(none_as_null=True), nullable=True
     )
+    duration: Mapped[Optional[int]]
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())

@@ -1,4 +1,6 @@
-from fastapi import UploadFile, HTTPException, File
+from typing import BinaryIO
+
+from fastapi import File, HTTPException, UploadFile
 from minio import Minio
 
 
@@ -17,7 +19,7 @@ class S3Client:
         )
         self.service_url = service_url
 
-    def upload_file(self, file: UploadFile, user_id: int) -> str:
+    def upload_file(self, file: BinaryIO, file_key: str) -> str:
         """
         Upload a file to the S3 bucket.
 
@@ -28,13 +30,10 @@ class S3Client:
         if not self.s3.bucket_exists(self.bucket_name):
             self.s3.make_bucket(bucket_name=self.bucket_name)
         try:
-            # Generate a unique key for the file
-            file_key = f"{user_id}/{file.filename}"
-
             # Upload the file to the S3 bucket
             self.s3.put_object(
                 bucket_name=self.bucket_name,
-                data=file.file,
+                data=file,
                 object_name=file_key,
                 length=-1,
                 part_size=10 * 1024 * 1024,
@@ -51,3 +50,17 @@ class S3Client:
 
     def get_file(self, bucket: str, file_key: str) -> File:
         return self.s3.get_object(bucket_name=bucket, object_name=file_key)
+
+    def delete_file(self, file_key: str) -> None:
+        """
+        Delete a file from the S3 bucket.
+
+        :param file_key: Key of the file to delete.
+        """
+        try:
+            self.s3.remove_object(bucket_name=self.bucket_name, object_name=file_key)
+        except Exception as e:
+            raise HTTPException(
+                status_code=500,
+                detail=f"Failed to delete file: {file_key}. Error: {str(e)}",
+            )

@@ -1,16 +1,23 @@
 import asyncio
 from dataclasses import dataclass
-from datetime import datetime, timedelta, UTC
+from datetime import UTC, datetime, timedelta
 from random import choices
+from typing import Optional
 
 import jwt
+from fastapi import HTTPException, status
 from firebase_admin import App as FirebaseApp
 from firebase_admin import auth
+from firebase_admin.auth import (
+    ExpiredIdTokenError,
+    InvalidIdTokenError,
+    RevokedIdTokenError,
+)
 
 from src.client.mail_client import MailClient
-from src.exceptions import CodeNotFoundExceptions, CodeExpiredExceptions
+from src.exceptions import CodeExpiredExceptions, CodeNotFoundExceptions
 from src.repository.user_repository import UserRepository
-from src.schemas.user import UserCreate
+from src.schemas.user import UserCreate, UserTokenResponse
 from src.settings import Settings
 
 
@@ -21,36 +28,65 @@ class AuthService:
     mail_client: MailClient
     firebase_client: FirebaseApp
 
-    async def auth_by_firebase_token(self, token: str) -> dict:
-        decoded_token = auth.verify_id_token(id_token=token, app=self.firebase_client)
-        decoded_email = decoded_token["firebase"]["identities"].get("email")[0]
-        user_uid = decoded_token["uid"]
+    async def auth_by_firebase_token(self, token: str) -> UserTokenResponse:
+        try:
+            decoded_token = auth.verify_id_token(
+                id_token=token, app=self.firebase_client
+            )
+            user_uid = decoded_token.get("uid")
+            if not user_uid:
+                raise ValueError("UID not found in Firebase token")
 
-        if exists_user := await self.user_repository.get_user_by_firebase_token(
-            user_uid
-        ):
-            access_token = await self._create_token(exists_user.id)
-            return {
-                "user_id": exists_user.id,
-                "access_token": access_token.get("access_token"),
-            }
+            # Безопасное получение email
+            decoded_email = self._extract_email_from_token(decoded_token)
 
-        user = await self.user_repository.create_user_by_firebase_token(
-            user_uid, email=decoded_email
-        )
-        return {
-            "user_id": user.id,
-            "access_token": (await self._create_token(user.id)).get("access_token"),
-        }
+            if exists_user := await self.user_repository.get_user_by_firebase_token(
+                user_uid
+            ):
+                access_token = await self._create_token(exists_user.id)
+                return UserTokenResponse(
+                    user_id=exists_user.id,
+                    access_token=access_token.get("access_token"),
+                )
+
+            user = await self.user_repository.create_user_by_firebase_token(
+                user_uid, email=decoded_email, name=decoded_token.get("name")
+            )
+            return UserTokenResponse(
+                user_id=user.id,
+                access_token=(await self._create_token(user.id)).get("access_token"),
+            )
+
+        except (InvalidIdTokenError, ExpiredIdTokenError, RevokedIdTokenError) as e:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail=f"Invalid Firebase token: {str(e)}",
+            )
+        except Exception as e:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Authentication failed: {str(e)}",
+            )
+
+    def _extract_email_from_token(self, decoded_token: dict) -> Optional[str]:
+        """
+        Safely extract email from Firebase token
+        """
+        try:
+            identities = decoded_token.get("firebase", {}).get("identities", {})
+            emails = identities.get("email", [])
+            return emails[0] if emails else None
+        except (KeyError, IndexError):
+            return None
 
     async def verify_auth_code(self, email: str, code: int) -> dict:
         if code_with_email_link := await self.user_repository.get_code_with_email(
             email, code
         ):
-            utc_now = datetime.now(tz=None)
+            utc_now = datetime.now(tz=UTC)
             if code_with_email_link.code != code:
                 raise CodeNotFoundExceptions
-            if code_with_email_link.expires_at.replace(tzinfo=None) < utc_now:
+            if code_with_email_link.expires_at < utc_now.replace(tzinfo=None):
                 raise CodeExpiredExceptions
 
             user_id = await self.get_or_create_user(user=UserCreate(email=email))

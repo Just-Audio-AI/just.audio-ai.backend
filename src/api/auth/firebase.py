@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Body
+from fastapi import APIRouter, Depends
 
 from src.dependency import get_auth_service
 from src.schemas.user import UserTokenResponse, UserTokenRequest

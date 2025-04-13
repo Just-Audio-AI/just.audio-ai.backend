@@ -121,7 +121,10 @@ async def get_products_service(
 async def get_user_payment_repository(db: DB) -> UserPaymentRepository:
     return UserPaymentRepository(db=db)
 
+
 async def get_user_payment_service(
-    user_payment_repository: Annotated[UserPaymentRepository, Depends(get_user_payment_repository)]
+    user_payment_repository: Annotated[
+        UserPaymentRepository, Depends(get_user_payment_repository)
+    ]
 ):
     return UserPaymentService(user_payment_repository=user_payment_repository)

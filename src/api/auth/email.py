@@ -1,7 +1,6 @@
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi import APIRouter, Depends, Response, status
 
 from src.dependency import get_auth_service
-from src.exceptions import CodeExpiredExceptions, CodeNotFoundExceptions
 from src.schemas import UserEmail, UserEmailCodeRequest, UserTokenResponse
 from src.service.auth import AuthService
 
@@ -17,6 +16,7 @@ async def email_auth(
 ):
     await auth_service.send_auth_code(body.email)
     return Response(status_code=status.HTTP_200_OK, content="Code sent to email")
+
 
 @router.post(
     "/verify-code",

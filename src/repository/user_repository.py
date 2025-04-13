@@ -32,19 +32,27 @@ class UserRepository:
                     await session.execute(select(User).where(User.email == email))
                 ).scalar_one_or_none()
                 if user is None:
-                    return await self._create_and_get_user_by_firebase(firebase_token, email, name)
+                    return await self._create_and_get_user_by_firebase(
+                        firebase_token, email, name
+                    )
                 else:
                     user.firebase_token = firebase_token
                     await session.commit()
                     await session.flush()
                     return user
             else:
-                return await self._create_and_get_user_by_firebase(firebase_token, name, email)
+                return await self._create_and_get_user_by_firebase(
+                    firebase_token, name, email
+                )
 
-    async def _create_and_get_user_by_firebase(self, firebase_token: str, email: str, name: str | None = None) -> User:
+    async def _create_and_get_user_by_firebase(
+        self, firebase_token: str, email: str, name: str | None = None
+    ) -> User:
         async with self.db as session:
             query = (
-                insert(User).values(firebase_token=firebase_token, email=email, name=name).returning(User.id)
+                insert(User)
+                .values(firebase_token=firebase_token, email=email, name=name)
+                .returning(User.id)
             )
             user_id = (await session.execute(query)).scalar_one_or_none()
             await session.commit()

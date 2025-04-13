@@ -1,6 +1,6 @@
 from typing import BinaryIO
 
-from fastapi import File, HTTPException, UploadFile
+from fastapi import File, HTTPException
 from minio import Minio
 
 

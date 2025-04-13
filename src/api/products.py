@@ -23,17 +23,17 @@ router = APIRouter(
     - Each product contains information about available minutes for audio transcription
     - If a product has an active discount, it will include discounted price and deadline
     """,
-    response_description="List of available products"
+    response_description="List of available products",
 )
 async def get_all_products(
     products_service: ProductsService = Depends(get_products_service),
 ) -> list[ProductResponse]:
     """
     Get all active products with their current prices and discounts.
-    
+
     Args:
         products_service: Service for product operations
-        
+
     Returns:
         List[ProductResponse]: List of available products
     """

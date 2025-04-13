@@ -7,7 +7,15 @@ import ffmpeg
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status, Body, BackgroundTasks
+from fastapi import (
+    APIRouter,
+    Depends,
+    File,
+    HTTPException,
+    UploadFile,
+    status,
+    BackgroundTasks,
+)
 from fastapi.responses import FileResponse, Response, JSONResponse
 
 from src.dependency import (
@@ -38,7 +46,10 @@ async def upload_file(
 ):
     # Validate file extension
     extension = Path(file.filename).suffix.lower() if file.filename else ""
-    if extension not in ALLOWED_AUDIO_EXTENSIONS and extension not in ALLOWED_VIDEO_EXTENSIONS:
+    if (
+        extension not in ALLOWED_AUDIO_EXTENSIONS
+        and extension not in ALLOWED_VIDEO_EXTENSIONS
+    ):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Unsupported file format. Allowed formats: {', '.join(ALLOWED_AUDIO_EXTENSIONS.union(ALLOWED_VIDEO_EXTENSIONS))}",
@@ -60,8 +71,9 @@ async def upload_file(
             audio_output_path = os.path.join(tmp_dir, f"audio_{uuid.uuid4()}.wav")
             try:
                 # Use ffmpeg to extract audio
-                ffmpeg.input(temp_file_path).output(audio_output_path, acodec='pcm_s16le', ac=1, ar='16k').run(
-                    quiet=True, overwrite_output=True)
+                ffmpeg.input(temp_file_path).output(
+                    audio_output_path, acodec="pcm_s16le", ac=1, ar="16k"
+                ).run(quiet=True, overwrite_output=True)
                 final_file_path = audio_output_path
             except ffmpeg.Error as e:
                 raise HTTPException(
@@ -73,15 +85,24 @@ async def upload_file(
         # try:
         # Get original filename without extension for display
         original_name = Path(file.filename).stem if file.filename else "file"
-        display_filename = f"{original_name}.wav" if extension in ALLOWED_VIDEO_EXTENSIONS else file.filename
+        display_filename = (
+            f"{original_name}.wav"
+            if extension in ALLOWED_VIDEO_EXTENSIONS
+            else file.filename
+        )
 
         # Upload to S3 and save record in database
         with open(final_file_path, "rb") as f:
-            uploaded_file_url = await file_service.upload_file_to_s3(f, user_id, Path(final_file_path).name)
+            uploaded_file_url = await file_service.upload_file_to_s3(
+                f, user_id, Path(final_file_path).name
+            )
 
         # Create a user file record
         file_record = await user_file_service.create_user_file(
-            user_id, uploaded_file_url, status=FileProcessingStatus.UPLOADED.value, display_filename=display_filename
+            user_id,
+            uploaded_file_url,
+            status=FileProcessingStatus.UPLOADED.value,
+            display_filename=display_filename,
         )
 
         return JSONResponse(
@@ -91,7 +112,7 @@ async def upload_file(
                 "file_url": uploaded_file_url,
                 "status": file_record.status,
                 "display_filename": display_filename,
-            }
+            },
         )
         #
         # except Exception as e:
@@ -99,6 +120,7 @@ async def upload_file(
         #         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         #         detail=f"Error uploading file: {str(e)}",
         #     )
+
 
 @router.post("/transcription", status_code=status.HTTP_201_CREATED)
 async def launch_transcription(
@@ -113,24 +135,27 @@ async def launch_transcription(
     user_files = await user_file_service.get_user_file(user_id, body.file_ids)
     if not user_files:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
-    
+
     # Update files status to PROCESSING before starting transcription
-    await user_file_service.update_files_status(body.file_ids, FileProcessingStatus.PROCESSING)
-    
+    await user_file_service.update_files_status(
+        body.file_ids, FileProcessingStatus.PROCESSING
+    )
+
     # Add transcription tasks to background tasks
     for user_file in user_files:
         audio_file_url = f"{settings.BASE_URL}/audio/convert/file/download/public-file/{user_file.file_url}"
         callback_url = f"{settings.whisper_ai_callback_url}/{user_file.file_url}"
-        
+
         background_tasks.add_task(
             audio_convert_service.convert_audio_to_text,
             audio_file_url=audio_file_url,
             response_format="json",
             language=None,  # Auto-detect language
-            callback_url=callback_url
+            callback_url=callback_url,
         )
-    
+
     return Response(status_code=status.HTTP_200_OK)
+
 
 @router.get("/download/{bucket}/{user_id}/{file_name}")
 async def download_file(

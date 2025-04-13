@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.models import Transactions
 
+
 @dataclass
 class UserPaymentRepository:
     db: AsyncSession

@@ -1,5 +1,4 @@
 from datetime import datetime
-from typing import Optional
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict
@@ -21,11 +20,14 @@ class UserFileDetail(UserFileBase):
     transcription: dict | None = None
     duration: int | None = None
 
+
 class UserFileListResponse(BaseModel):
     items: list[UserFileBase]
 
+
 class UserFileListDetailResponse(BaseModel):
     items: list[UserFileDetail]
+
 
 class FileTranscriptionRequest(BaseModel):
     file_ids: list[int]

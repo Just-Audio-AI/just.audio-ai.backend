@@ -7,28 +7,21 @@ from pydantic import BaseModel, Field, ConfigDict
 
 class ProductResponse(BaseModel):
     """Schema for product response"""
+
     uuid: UUID = Field(description="Unique identifier of the product")
     display_name: str = Field(description="Display name of the product")
     slug: str = Field(description="URL-friendly name of the product")
     price: float = Field(description="Original price of the product in RUB", gt=0)
     price_with_discount: Optional[float] = Field(
-        None, 
-        description="Discounted price of the product in RUB",
-        gt=0
+        None, description="Discounted price of the product in RUB", gt=0
     )
     discount_deadline: Optional[datetime] = Field(
-        None,
-        description="Deadline for the discount offer"
+        None, description="Deadline for the discount offer"
     )
     minute_count: int = Field(
-        description="Number of minutes available in this product",
-        gt=0
+        description="Number of minutes available in this product", gt=0
     )
-    discount: float = Field(
-        description="Discount percentage",
-        ge=0,
-        le=100
-    )
+    discount: float = Field(description="Discount percentage", ge=0, le=100)
 
     model_config = ConfigDict(from_attributes=True)
 

@@ -7,9 +7,12 @@ class UserTokenResponse(BaseModel):
     user_id: int
     access_token: str
 
+
 class UserTokenRequest(BaseModel):
     """Request model for authentication endpoints"""
+
     token: str
+
 
 class User(BaseModel):
     username: str | None = None

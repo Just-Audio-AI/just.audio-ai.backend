@@ -20,7 +20,9 @@ router = APIRouter(
 async def get_user_files(
     user_id: int,
     user_file_service: Annotated[UserFileService, Depends(get_user_file_service)],
-    status: FileProcessingStatus | None = Query(None, description="Filter files by status"),
+    status: FileProcessingStatus | None = Query(
+        None, description="Filter files by status"
+    ),
 ):
     files = await user_file_service.get_user_files(user_id, status=status)
     return UserFileListResponse(items=files)
@@ -33,7 +35,9 @@ async def get_user_files(
 async def get_user_files_detail(
     user_id: int,
     user_file_service: Annotated[UserFileService, Depends(get_user_file_service)],
-    status: FileProcessingStatus | None = Query(None, description="Filter files by status"),
+    status: FileProcessingStatus | None = Query(
+        None, description="Filter files by status"
+    ),
 ):
     files = await user_file_service.get_user_files(user_id, status=status)
     return UserFileListDetailResponse(items=files)

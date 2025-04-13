@@ -15,4 +15,4 @@ async def get_user_transaction(
         UserPaymentService, Depends(get_user_payment_service)
     ],
 ):
-    return user_payment_service.get_user_transactions(user_id=user_id)
+    return await user_payment_service.get_user_transactions(user_id=user_id)

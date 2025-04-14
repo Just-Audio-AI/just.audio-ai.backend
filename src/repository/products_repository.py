@@ -11,4 +11,4 @@ class ProductsRepository:
     db: AsyncSession
 
     async def get_all_products(self) -> list[Products]:
-        return (await self.db.execute(select(Products))).scalars().all()
+        return (await self.db.execute(select(Products).order_by(Products.sort_order))).scalars().all()

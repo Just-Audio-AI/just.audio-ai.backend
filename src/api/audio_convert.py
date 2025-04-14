@@ -143,7 +143,7 @@ async def launch_transcription(
 
     # Add transcription tasks to background tasks
     for user_file in user_files:
-        audio_file_url = f"{settings.BASE_URL}/audio/convert/file/download/public-file/{user_file.file_url}"
+        audio_file_url = f"{settings.S3_URL}/public-file/{user_file.file_url}"
         callback_url = f"{settings.whisper_ai_callback_url}/{user_file.file_url}"
 
         background_tasks.add_task(
@@ -206,3 +206,30 @@ async def callback_whishper(
         print(f"Error deleting file from S3: {str(e)}")
 
     return Response(status_code=status.HTTP_202_ACCEPTED)
+
+
+@router.delete("/{file_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_file(
+    file_id: int,
+    user_id: int,
+    file_service: Annotated[FileService, Depends(get_file_service)],
+    user_file_service: Annotated[UserFileService, Depends(get_user_file_service)],
+) -> Response:
+    # Get file info before deletion
+    file = await user_file_service.get_user_file(user_id, [file_id])
+    if not file:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+    
+    file = file[0]  # Get first file since we queried by single ID
+    
+    # Delete file from S3
+    try:
+        await file_service.delete_file_from_s3(str(user_id), Path(file.file_url).name)
+    except Exception as e:
+        print(f"Error deleting file from S3: {str(e)}")
+        # Continue with DB deletion even if S3 deletion fails
+    
+    # Delete record from database
+    await user_file_service.delete_user_file(file_id)
+    
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

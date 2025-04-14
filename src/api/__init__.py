@@ -3,6 +3,7 @@ from src.api.auth.email import router as email_auth_router  # noqa: F403 F401
 from src.api.auth.firebase import router as firebase_auth_router  # noqa: F403 F401
 from src.api.products import router as products_router  # noqa: F403 F401
 from src.api.user_files import router as user_files_router  # noqa: F403 F401
+from src.api.users.user import router as user_router  # noqa: F403 F401
 
 routers = [
     value

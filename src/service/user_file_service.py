@@ -42,3 +42,9 @@ class UserFileService:
     async def get_user_files(self, user_id: int, status: FileProcessingStatus = None):
         status_value = status.value if status else None
         return await self.user_file_repository.get_user_files(user_id, status_value)
+
+    async def delete_user_file(self, file_id: int) -> None:
+        """
+        Delete a user file from the database
+        """
+        await self.user_file_repository.delete_user_file(file_id)

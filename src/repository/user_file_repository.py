@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-from sqlalchemy import insert, select, update
+from sqlalchemy import insert, select, update, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.models.file import UserFile
@@ -57,3 +57,11 @@ class UserFileRepository:
 
         result = await self.db.execute(query)
         return result.scalars().all()
+
+    async def delete_user_file(self, file_id: int) -> None:
+        """
+        Delete a user file from the database
+        """
+        query = delete(UserFile).where(UserFile.id == file_id)
+        await self.db.execute(query)
+        await self.db.commit()

@@ -12,13 +12,15 @@ class Products(Base):
     __tablename__ = "products"
 
     uuid: Mapped[UUID] = mapped_column(primary_key=True)
-    display_name: Mapped[str]
+    display_name: Mapped[str]  # например "100 минут"
     slug: Mapped[str]
-    price: Mapped[float]
-    price_with_discount: Mapped[Optional[float]]
-    discount_deadline: Mapped[Optional[datetime]]
-    minute_count: Mapped[int]
-    discount: Mapped[float]
+    price: Mapped[float]  # цена без скидки
+    price_with_discount: Mapped[Optional[float]]  # цена со скидкой
+    discount_deadline: Mapped[Optional[datetime]]  # срок действия скидки
+    minute_count: Mapped[int]  # количество минут
+    discount: Mapped[float]  # процент скидки
+    is_active: Mapped[bool] = mapped_column(default=True)  # активен ли продукт
+    sort_order: Mapped[int] = mapped_column(default=0)  # порядок сортировки
 
 
 class Transactions(Base):
@@ -39,3 +41,5 @@ class UserProducts(Base):
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
     minute_count: Mapped[int]
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
+    transaction_id: Mapped[int]  # ID транзакции из CloudPayments
+    amount: Mapped[float]  # Сумма оплаты

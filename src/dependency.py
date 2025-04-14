@@ -21,6 +21,7 @@ from src.service.file_service import FileService
 from src.service.payment.user_payment import UserPaymentService
 from src.service.products_service import ProductsService
 from src.service.user_file_service import UserFileService
+from src.service.user_service import UserService
 from src.settings import settings
 
 db_url = os.environ.get("DATABASE_URL")
@@ -128,3 +129,7 @@ async def get_user_payment_service(
     ]
 ):
     return UserPaymentService(user_payment_repository=user_payment_repository)
+
+
+async def get_user_service(user_repository: Annotated[UserRepository, Depends(get_user_repository)]):
+    return UserService(user_repository=user_repository)

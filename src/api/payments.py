@@ -13,6 +13,7 @@ router = APIRouter(
     prefix="/payments",
 )
 
+
 class CloudPaymentsCallback(BaseModel):
     TransactionId: int
     Amount: float
@@ -24,7 +25,9 @@ class CloudPaymentsCallback(BaseModel):
 async def handle_cloudpayments_callback(
     callback: CloudPaymentsCallback,
     products_service: Annotated[ProductsService, Depends(get_products_service)],
-    user_products_service: Annotated[UserProductsService, Depends(get_user_products_service)],
+    user_products_service: Annotated[
+        UserProductsService, Depends(get_user_products_service)
+    ],
 ) -> dict:
     """
     Обработка callback'а от CloudPayments
@@ -42,7 +45,9 @@ async def handle_cloudpayments_callback(
         # Проверяем существование продукта
         product = await products_service.get_by_id(product_id)
         if not product:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Product not found")
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="Product not found"
+            )
 
         # Создаем запись о покупке
         await user_products_service.create_user_product(
@@ -56,4 +61,4 @@ async def handle_cloudpayments_callback(
 
     except Exception as e:
         print(f"Error processing payment callback: {str(e)}")
-        return {"code": 13}  # Ошибка обработки 
+        return {"code": 13}  # Ошибка обработки

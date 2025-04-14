@@ -30,4 +30,4 @@ class UserProductsRepository:
             amount=amount,
         )
         await self.db.execute(query)
-        await self.db.commit() 
+        await self.db.commit()

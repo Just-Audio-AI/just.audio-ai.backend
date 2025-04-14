@@ -24,4 +24,4 @@ class UserProductsService:
             minute_count=minute_count,
             transaction_id=transaction_id,
             amount=amount,
-        ) 
+        )

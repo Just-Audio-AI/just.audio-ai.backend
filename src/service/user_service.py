@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from src.models import User
 from src.repository.user_repository import UserRepository
 
+
 @dataclass
 class UserService:
     user_repository: UserRepository

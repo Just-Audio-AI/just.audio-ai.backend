@@ -21,6 +21,14 @@ class UserFileRepository:
         await self.db.execute(query)
         await self.db.commit()
 
+    async def update_file_duration(self, file_id: int, duration: int) -> None:
+        """
+        Update the duration of a file in seconds
+        """
+        query = update(UserFile).where(UserFile.id == file_id).values(duration=duration)
+        await self.db.execute(query)
+        await self.db.commit()
+
     async def update_files_status(self, file_ids: list[int], status: str) -> None:
         query = update(UserFile).where(UserFile.id.in_(file_ids)).values(status=status)
         await self.db.execute(query)
@@ -65,3 +73,10 @@ class UserFileRepository:
         query = delete(UserFile).where(UserFile.id == file_id)
         await self.db.execute(query)
         await self.db.commit()
+
+    async def get_user_file_by_url(self, file_url: str) -> UserFile:
+        """
+        Get a user file by its URL
+        """
+        query = select(UserFile).where(UserFile.file_url == file_url)
+        return await self.db.scalar(query)

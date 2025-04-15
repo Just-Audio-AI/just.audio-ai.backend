@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from uuid import UUID
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -16,3 +17,6 @@ class ProductsRepository:
             .scalars()
             .all()
         )
+
+    async def get_by_id(self, product_id: UUID) -> Products:
+        return (await self.db.execute(select(Products).where(Products.uuid == product_id))).scalar_one()

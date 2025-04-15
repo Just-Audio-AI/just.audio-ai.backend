@@ -14,6 +14,7 @@ from src.client.whisper_ai_client import WhisperAIClient
 from src.repository.payment.user_payment_repository import UserPaymentRepository
 from src.repository.products_repository import ProductsRepository
 from src.repository.user_file_repository import UserFileRepository
+from src.repository.user_products_repository import UserProductsRepository
 from src.repository.user_repository import UserRepository
 from src.service.audio_convert_service import AudioConvertService
 from src.service.auth import AuthService
@@ -21,6 +22,7 @@ from src.service.file_service import FileService
 from src.service.payment.user_payment import UserPaymentService
 from src.service.products_service import ProductsService
 from src.service.user_file_service import UserFileService
+from src.service.user_products_service import UserProductsService
 from src.service.user_service import UserService
 from src.settings import settings
 
@@ -131,7 +133,21 @@ async def get_user_payment_service(
     return UserPaymentService(user_payment_repository=user_payment_repository)
 
 
+async def get_user_products_repository(db: DB) -> UserProductsRepository:
+    return UserProductsRepository(db=db)
+
+
 async def get_user_service(
-    user_repository: Annotated[UserRepository, Depends(get_user_repository)]
+    user_repository: Annotated[UserRepository, Depends(get_user_repository)],
+    user_products_repository: Annotated[UserProductsRepository, Depends(get_user_products_repository)]
 ):
-    return UserService(user_repository=user_repository)
+    return UserService(
+        user_repository=user_repository,
+        user_products_repository=user_products_repository,
+    )
+
+
+async def get_user_products_service(
+    user_products_repository: Annotated[UserProductsRepository, Depends(get_user_products_repository)]
+) -> UserProductsService:
+    return UserProductsService(user_products_repository=user_products_repository)

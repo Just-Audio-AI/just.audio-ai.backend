@@ -21,5 +21,5 @@ class UserFile(Base):
     transcription: Mapped[Optional[dict]] = mapped_column(
         JSONB(none_as_null=True), nullable=True
     )
-    duration: Mapped[Optional[int]]
+    duration: Mapped[Optional[int]] = mapped_column(comment="Длительность файла в секундах")
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())

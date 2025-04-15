@@ -1,7 +1,8 @@
 from datetime import datetime
 from typing import Any, Optional
-from uuid import UUID
+from uuid import UUID, uuid4
 
+import uuid
 from sqlalchemy import ForeignKey, func
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -32,6 +33,7 @@ class Transactions(Base):
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
     metainfo: Mapped[dict[str, Any]]
     price: Mapped[float]
+    user_product_id: Mapped[UUID] = mapped_column(ForeignKey("user_products.uuid"))
 
 
 class UserProducts(Base):
@@ -39,7 +41,16 @@ class UserProducts(Base):
 
     uuid: Mapped[UUID] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
-    minute_count: Mapped[int]
+    minute_count: Mapped[float] = mapped_column(default=0)
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
-    transaction_id: Mapped[int]  # ID транзакции из CloudPayments
     amount: Mapped[float]  # Сумма оплаты
+
+
+class UserProductsToProductsM2M(Base):
+    __tablename__ = "user_products_to_products"
+    uuid: Mapped[UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    product_id: Mapped[UUID] = mapped_column(ForeignKey("products.uuid"))
+    created_at: Mapped[datetime] = mapped_column(server_default=func.now())
+    amount: Mapped[float]
+    user_product: Mapped[UUID] = mapped_column(ForeignKey("user_products.uuid"))

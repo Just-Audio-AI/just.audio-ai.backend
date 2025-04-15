@@ -17,10 +17,7 @@ class Settings(BaseSettings):
     )
     BASE_URL: str = Field(
         validation_alias="BASE_URL",
-        default="https://f001-2a0b-4140-5070-00-2.ngrok-free.app",
-    )
-    S3_URL: str = Field(
-        validation_alias="S3_URL", default="https://57fc-46-226-166-83.ngrok-free.app"
+        default="https://c1e6-46-226-166-83.ngrok-free.app",
     )
     from_email: str = "i@saidmagomedov.ru"
     SMTP_PORT: int = 465

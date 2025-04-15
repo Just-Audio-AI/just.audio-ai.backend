@@ -18,6 +18,12 @@ class UserFileService:
             transcription=transcription_result,
         )
 
+    async def update_file_duration(self, file_id: int, duration: int) -> None:
+        """
+        Update the duration of a file in seconds
+        """
+        await self.user_file_repository.update_file_duration(file_id, duration)
+
     async def update_files_status(
         self, file_ids: list[int], status: FileProcessingStatus
     ) -> None:
@@ -48,3 +54,9 @@ class UserFileService:
         Delete a user file from the database
         """
         await self.user_file_repository.delete_user_file(file_id)
+
+    async def get_user_file_by_url(self, file_url: str):
+        """
+        Get a user file by its URL
+        """
+        return await self.user_file_repository.get_user_file_by_url(file_url)

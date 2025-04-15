@@ -22,6 +22,7 @@ from src.dependency import (
     get_audio_convert_service,
     get_file_service,
     get_user_file_service,
+    get_user_products_service,
 )
 from src.models.enums import FileProcessingStatus
 from src.schemas.file import FileTranscriptionRequest
@@ -30,6 +31,7 @@ from src.settings import settings
 
 from src.service.file_service import FileService
 from src.service.user_file_service import UserFileService
+from src.service.user_products_service import UserProductsService
 
 router = APIRouter(prefix="/audio/convert/file", tags=["audio-convert"])
 
@@ -65,6 +67,7 @@ async def upload_file(
 
         # Process file based on its type
         final_file_path = temp_file_path
+        duration_seconds = 0
 
         # If it's a video, extract the audio
         if extension in ALLOWED_VIDEO_EXTENSIONS:
@@ -80,6 +83,14 @@ async def upload_file(
                     status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                     detail=f"Error extracting audio from video: {str(e)}",
                 )
+
+        # Get file duration using ffmpeg
+        try:
+            probe = ffmpeg.probe(final_file_path)
+            duration_seconds = int(float(probe['format']['duration']))
+        except ffmpeg.Error as e:
+            # If duration detection fails, log but continue
+            print(f"Error detecting file duration: {str(e)}")
 
         # Upload file to S3
         # try:
@@ -104,6 +115,10 @@ async def upload_file(
             status=FileProcessingStatus.UPLOADED.value,
             display_filename=display_filename,
         )
+        
+        # Update the file duration if detected
+        if duration_seconds > 0:
+            await user_file_service.update_file_duration(file_record.id, duration_seconds)
 
         return JSONResponse(
             status_code=status.HTTP_201_CREATED,
@@ -112,6 +127,7 @@ async def upload_file(
                 "file_url": uploaded_file_url,
                 "status": file_record.status,
                 "display_filename": display_filename,
+                "duration_seconds": duration_seconds,
             },
         )
         #
@@ -143,7 +159,7 @@ async def launch_transcription(
 
     # Add transcription tasks to background tasks
     for user_file in user_files:
-        audio_file_url = f"{settings.S3_URL}/public-file/{user_file.file_url}"
+        audio_file_url = f"{settings.BASE_URL}/audio/convert/file/download/public-file/{user_file.file_url}"
         callback_url = f"{settings.whisper_ai_callback_url}/{user_file.file_url}"
 
         background_tasks.add_task(
@@ -191,12 +207,30 @@ async def callback_whishper(
     result: dict | str,
     user_file_service: Annotated[UserFileService, Depends(get_user_file_service)],
     file_service: Annotated[FileService, Depends(get_file_service)],
+    user_products_service: Annotated[UserProductsService, Depends(get_user_products_service)],
 ) -> Response:
     file_url = f"{user_id}/{file_name}"
+    
+    # Get the file record
+    user_file = await user_file_service.get_user_file_by_url(file_url)
+    if not user_file:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="File not found")
+    
     # Save transcription result
     await user_file_service.make_user_file_completed(
         file_url=file_url, transcription_result=result
     )
+
+    # Deduct minutes from user's balance if file has duration
+    if user_file.duration and user_file.duration > 0:
+        try:
+            await user_products_service.deduct_minutes(
+                user_id=int(user_id),
+                seconds_used=user_file.duration
+            )
+        except ValueError as e:
+            # Log the error but don't fail the request 
+            print(f"Error deducting minutes: {str(e)}")
 
     # Delete the audio file from S3
     try:

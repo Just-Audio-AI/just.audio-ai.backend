@@ -19,14 +19,16 @@ class UserProductsService:
         """
         Create a new user product record after successful payment
         """
-        exist_user_product = await self.user_products_repository.get_user_product(user_id)
+        exist_user_product = await self.user_products_repository.get_user_product(
+            user_id
+        )
         if not exist_user_product:
             return await self.user_products_repository.create_user_product(
                 uuid=uuid4(),
                 user_id=user_id,
                 minute_count=minute_count,
                 amount=amount,
-                product_id=product_id
+                product_id=product_id,
             )
         return await self.user_products_repository.update_user_product(
             user_id=user_id,
@@ -42,7 +44,7 @@ class UserProductsService:
         """
         # Calculate minutes with ceiling to round up any partial minute
         minutes_to_deduct = seconds_used / 60.0  # Round up to nearest minute
-        
+
         try:
             return await self.user_products_repository.deduct_minutes(
                 user_id=user_id,

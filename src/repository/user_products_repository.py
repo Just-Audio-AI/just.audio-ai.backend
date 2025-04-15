@@ -22,12 +22,16 @@ class UserProductsRepository:
         """
         Create a new user product record in the database
         """
-        query = insert(UserProducts).values(
-            uuid=uuid,
-            user_id=user_id,
-            minute_count=minute_count,
-            amount=amount,
-        ).returning(UserProducts)
+        query = (
+            insert(UserProducts)
+            .values(
+                uuid=uuid,
+                user_id=user_id,
+                minute_count=minute_count,
+                amount=amount,
+            )
+            .returning(UserProducts)
+        )
         created_user_product = (await self.db.execute(query)).scalar_one()
         await self.__create_user_products_to_products(
             user_id=user_id,
@@ -49,17 +53,23 @@ class UserProductsRepository:
         user_product_id: UUID,
         product_id: UUID,
     ) -> UserProducts:
-        query = update(UserProducts).where(
-            UserProducts.uuid == user_product_id,
-            UserProducts.user_id == user_id
-        ).values(minute_count=minute_count).returning(UserProducts)
+        query = (
+            update(UserProducts)
+            .where(
+                UserProducts.uuid == user_product_id, UserProducts.user_id == user_id
+            )
+            .values(minute_count=minute_count)
+            .returning(UserProducts)
+        )
         updated_user_products = (await self.db.execute(query)).scalar_one()
         user_products_to_products_exist = select(UserProductsToProductsM2M).where(
             UserProductsToProductsM2M.user_id == user_id,
             UserProductsToProductsM2M.product_id == product_id,
             UserProductsToProductsM2M.user_product == updated_user_products.uuid,
         )
-        result = (await self.db.execute(user_products_to_products_exist)).scalar_one_or_none()
+        result = (
+            await self.db.execute(user_products_to_products_exist)
+        ).scalar_one_or_none()
         if not result:
             await self.__create_user_products_to_products(
                 user_id=user_id,
@@ -81,26 +91,32 @@ class UserProductsRepository:
             user_id=user_id,
             product_id=product_id,
             amount=amount,
-            user_product=user_product
+            user_product=user_product,
         )
         await self.db.execute(user_products_to_products_query)
         await self.db.commit()
-        
-    async def deduct_minutes(self, user_id: int, minutes_to_deduct: float) -> UserProducts:
+
+    async def deduct_minutes(
+        self, user_id: int, minutes_to_deduct: float
+    ) -> UserProducts:
         """
         Deduct minutes from user's balance after file transcription
         """
         user_product = await self.get_user_product(user_id)
         if not user_product:
             raise ValueError(f"User {user_id} has no product with minutes")
-            
+
         new_minute_count = max(0, user_product.minute_count - minutes_to_deduct)
-        
-        query = update(UserProducts).where(
-            UserProducts.uuid == user_product.uuid,
-            UserProducts.user_id == user_id
-        ).values(minute_count=new_minute_count).returning(UserProducts)
-        
+
+        query = (
+            update(UserProducts)
+            .where(
+                UserProducts.uuid == user_product.uuid, UserProducts.user_id == user_id
+            )
+            .values(minute_count=new_minute_count)
+            .returning(UserProducts)
+        )
+
         updated_user_product = (await self.db.execute(query)).scalar_one()
         await self.db.commit()
         return updated_user_product

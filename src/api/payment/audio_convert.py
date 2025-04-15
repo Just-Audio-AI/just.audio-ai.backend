@@ -87,7 +87,7 @@ async def upload_file(
         # Get file duration using ffmpeg
         try:
             probe = ffmpeg.probe(final_file_path)
-            duration_seconds = int(float(probe['format']['duration']))
+            duration_seconds = int(float(probe["format"]["duration"]))
         except ffmpeg.Error as e:
             # If duration detection fails, log but continue
             print(f"Error detecting file duration: {str(e)}")
@@ -115,10 +115,12 @@ async def upload_file(
             status=FileProcessingStatus.UPLOADED.value,
             display_filename=display_filename,
         )
-        
+
         # Update the file duration if detected
         if duration_seconds > 0:
-            await user_file_service.update_file_duration(file_record.id, duration_seconds)
+            await user_file_service.update_file_duration(
+                file_record.id, duration_seconds
+            )
 
         return JSONResponse(
             status_code=status.HTTP_201_CREATED,
@@ -207,15 +209,19 @@ async def callback_whishper(
     result: dict | str,
     user_file_service: Annotated[UserFileService, Depends(get_user_file_service)],
     file_service: Annotated[FileService, Depends(get_file_service)],
-    user_products_service: Annotated[UserProductsService, Depends(get_user_products_service)],
+    user_products_service: Annotated[
+        UserProductsService, Depends(get_user_products_service)
+    ],
 ) -> Response:
     file_url = f"{user_id}/{file_name}"
-    
+
     # Get the file record
     user_file = await user_file_service.get_user_file_by_url(file_url)
     if not user_file:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="File not found")
-    
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="File not found"
+        )
+
     # Save transcription result
     await user_file_service.make_user_file_completed(
         file_url=file_url, transcription_result=result
@@ -225,11 +231,10 @@ async def callback_whishper(
     if user_file.duration and user_file.duration > 0:
         try:
             await user_products_service.deduct_minutes(
-                user_id=int(user_id),
-                seconds_used=user_file.duration
+                user_id=int(user_id), seconds_used=user_file.duration
             )
         except ValueError as e:
-            # Log the error but don't fail the request 
+            # Log the error but don't fail the request
             print(f"Error deducting minutes: {str(e)}")
 
     # Delete the audio file from S3

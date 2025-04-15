@@ -19,4 +19,6 @@ class ProductsRepository:
         )
 
     async def get_by_id(self, product_id: UUID) -> Products:
-        return (await self.db.execute(select(Products).where(Products.uuid == product_id))).scalar_one()
+        return (
+            await self.db.execute(select(Products).where(Products.uuid == product_id))
+        ).scalar_one()

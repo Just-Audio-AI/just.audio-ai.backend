@@ -1,5 +1,4 @@
 from datetime import datetime
-from typing import Optional
 from uuid import UUID
 from pydantic import BaseModel, Field, computed_field, ConfigDict
 
@@ -30,13 +29,13 @@ class TransactionResponse(BaseModel):
     def minute_count(self) -> int | None:
         """Get the minute count from metainfo if available"""
         return self.metainfo.get("minute_count") if self.metainfo else None
-    
+
     @computed_field
     @property
     def transaction_id(self) -> int | None:
         """Get the payment system transaction ID if available"""
         return self.metainfo.get("transaction_id") if self.metainfo else None
-    
+
     @computed_field
     @property
     def payment_status(self) -> str | None:

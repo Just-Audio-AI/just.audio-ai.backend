@@ -139,7 +139,9 @@ async def get_user_products_repository(db: DB) -> UserProductsRepository:
 
 async def get_user_service(
     user_repository: Annotated[UserRepository, Depends(get_user_repository)],
-    user_products_repository: Annotated[UserProductsRepository, Depends(get_user_products_repository)]
+    user_products_repository: Annotated[
+        UserProductsRepository, Depends(get_user_products_repository)
+    ],
 ):
     return UserService(
         user_repository=user_repository,
@@ -148,6 +150,8 @@ async def get_user_service(
 
 
 async def get_user_products_service(
-    user_products_repository: Annotated[UserProductsRepository, Depends(get_user_products_repository)]
+    user_products_repository: Annotated[
+        UserProductsRepository, Depends(get_user_products_repository)
+    ]
 ) -> UserProductsService:
     return UserProductsService(user_products_repository=user_products_repository)

@@ -4,7 +4,11 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 from pydantic import BaseModel
 import orjson as json
-from src.dependency import get_products_service, get_user_payment_service, get_user_products_service
+from src.dependency import (
+    get_products_service,
+    get_user_payment_service,
+    get_user_products_service,
+)
 from src.service.payment.user_payment import UserPaymentService
 from src.service.products_service import ProductsService
 from src.service.user_products_service import UserProductsService
@@ -46,7 +50,7 @@ async def handle_cloudpayments_callback(
     except (KeyError, json.JSONDecodeError) as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Неверный формат поля Data: {str(e)}"
+            detail=f"Неверный формат поля Data: {str(e)}",
         )
 
     try:
@@ -54,7 +58,7 @@ async def handle_cloudpayments_callback(
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=f"Ошибка валидации данных: {str(e)}"
+            detail=f"Ошибка валидации данных: {str(e)}",
         )
 
     # Проверяем статус транзакции
@@ -62,7 +66,7 @@ async def handle_cloudpayments_callback(
         return {"code": 0}
 
     # try:
-        # Получаем данные из callback'а
+    # Получаем данные из callback'а
     product_id = UUID(callback.Data["productId"])
     user_id = int(callback.Data["userId"])
     minute_count = float(callback.Data["minuteCount"])

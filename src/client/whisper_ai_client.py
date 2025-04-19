@@ -30,7 +30,6 @@ class WhisperAIClient:
                     json=data,
                     headers={"Authorization": f"Bearer {self.auth_token}"},
                 )
-                response.raise_for_status()
                 return response.json()
             except httpx.ReadTimeout:
                 pass

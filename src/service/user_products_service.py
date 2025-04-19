@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from datetime import datetime
 from uuid import uuid4, UUID
 
 from src.models import UserProducts
@@ -53,3 +54,35 @@ class UserProductsService:
         except ValueError as e:
             # Handle the case where user has no minutes
             raise ValueError(f"Failed to deduct minutes: {str(e)}")
+
+    async def get_user_subscriptions(self, user_id: int) -> list[UserProducts]:
+        """Получить все активные подписки пользователя"""
+        return await self.user_products_repository.get_user_subscriptions(
+            user_id=user_id,
+            is_active=True,
+        )
+
+    async def get_subscription_by_id(self, subscription_id: str) -> UserProducts | None:
+        """Получить подписку по ID в CloudPayments"""
+        return await self.user_products_repository.get_subscription_by_id(subscription_id)
+
+    async def create_subscription(
+        self,
+        user_id: int,
+        product_id: UUID,
+        subscription_id: str,
+        expires_at: datetime,
+        amount: float,
+        interval: str,
+        minute_count: float,
+    ) -> UserProducts:
+        """Создать новую подписку"""
+        return await self.user_products_repository.create_subscription_product(
+            user_id=user_id,
+            product_id=product_id,
+            minute_count=minute_count,
+            amount=amount,
+            subscription_id=subscription_id,
+            interval=interval,
+            expires_at=expires_at
+        )

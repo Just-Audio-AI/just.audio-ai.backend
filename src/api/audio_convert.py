@@ -23,6 +23,7 @@ from src.dependency import (
     get_file_service,
     get_user_file_service,
     get_user_products_service,
+    get_current_user_id,
 )
 from src.models.enums import FileProcessingStatus
 from src.schemas.file import FileTranscriptionRequest
@@ -41,10 +42,10 @@ ALLOWED_VIDEO_EXTENSIONS = {".mp4", ".mov", ".avi", ".mkv", ".webm"}
 
 @router.post("/", status_code=status.HTTP_201_CREATED)
 async def upload_file(
-    user_id: int,
+    current_user_id: Annotated[int, Depends(get_current_user_id)],
+    file_service: Annotated[FileService, Depends(get_file_service)],
+    user_file_service: Annotated[UserFileService, Depends(get_user_file_service)],
     file: UploadFile = File(...),
-    file_service: FileService = Depends(get_file_service),
-    user_file_service: UserFileService = Depends(get_user_file_service),
 ):
     # Validate file extension
     extension = Path(file.filename).suffix.lower() if file.filename else ""
@@ -105,12 +106,12 @@ async def upload_file(
         # Upload to S3 and save record in database
         with open(final_file_path, "rb") as f:
             uploaded_file_url = await file_service.upload_file_to_s3(
-                f, user_id, Path(final_file_path).name
+                f, current_user_id, Path(final_file_path).name
             )
 
         # Create a user file record
         file_record = await user_file_service.create_user_file(
-            user_id,
+            current_user_id,
             uploaded_file_url,
             status=FileProcessingStatus.UPLOADED.value,
             display_filename=display_filename,
@@ -143,14 +144,14 @@ async def upload_file(
 @router.post("/transcription", status_code=status.HTTP_201_CREATED)
 async def launch_transcription(
     background_tasks: BackgroundTasks,
-    user_id: int,
+    current_user_id: Annotated[int, Depends(get_current_user_id)],
     user_file_service: Annotated[UserFileService, Depends(get_user_file_service)],
     audio_convert_service: Annotated[
         AudioConvertService, Depends(get_audio_convert_service)
     ],
     body: FileTranscriptionRequest,
 ):
-    user_files = await user_file_service.get_user_file(user_id, body.file_ids)
+    user_files = await user_file_service.get_user_file(current_user_id, body.file_ids)
     if not user_files:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
 
@@ -250,12 +251,12 @@ async def callback_whishper(
 @router.delete("/{file_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_file(
     file_id: int,
-    user_id: int,
+    current_user_id: Annotated[int, Depends(get_current_user_id)],
     file_service: Annotated[FileService, Depends(get_file_service)],
     user_file_service: Annotated[UserFileService, Depends(get_user_file_service)],
 ) -> Response:
     # Get file info before deletion
-    file = await user_file_service.get_user_file(user_id, [file_id])
+    file = await user_file_service.get_user_file(current_user_id, [file_id])
     if not file:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
 
@@ -263,7 +264,7 @@ async def delete_file(
 
     # Delete file from S3
     try:
-        await file_service.delete_file_from_s3(str(user_id), Path(file.file_url).name)
+        await file_service.delete_file_from_s3(str(current_user_id), Path(file.file_url).name)
     except Exception as e:
         print(f"Error deleting file from S3: {str(e)}")
         # Continue with DB deletion even if S3 deletion fails

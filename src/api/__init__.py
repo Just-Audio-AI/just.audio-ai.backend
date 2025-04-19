@@ -1,4 +1,4 @@
-from src.api.payment.audio_convert import (
+from src.api.audio_convert import (
     router as audio_convert_router,  # noqa: F403 F401
 )
 from src.api.auth.email import router as email_auth_router  # noqa: F403 F401

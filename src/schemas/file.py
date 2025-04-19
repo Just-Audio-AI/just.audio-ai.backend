@@ -12,6 +12,8 @@ class UserFileBase(BaseModel):
     display_name: str
     external_id: UUID | None = None
     created_at: datetime
+    file_size: int | None = None
+    mime_type: str | None = None
 
     model_config = ConfigDict(from_attributes=True)
 

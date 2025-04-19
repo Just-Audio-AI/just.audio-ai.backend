@@ -24,4 +24,10 @@ class UserFile(Base):
     duration: Mapped[Optional[int]] = mapped_column(
         comment="Длительность файла в секундах"
     )
+    file_size: Mapped[Optional[int]] = mapped_column(
+        comment="Размер файла в байтах", nullable=True
+    )
+    mime_type: Mapped[Optional[str]] = mapped_column(
+        comment="MIME-тип файла", nullable=True
+    )
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())

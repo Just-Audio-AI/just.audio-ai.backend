@@ -33,13 +33,16 @@ class UserFileService:
         )
 
     async def create_user_file(
-        self, user_id: int, file_url: str, status: str, display_filename: str
+        self, user_id: int, file_url: str, status: str, display_filename: str,
+        file_size: int = None, mime_type: str = None
     ):
         return await self.user_file_repository.create_user_file(
             user_id=user_id,
             file_url=file_url,
             status=status,
             display_filename=display_filename,
+            file_size=file_size,
+            mime_type=mime_type
         )
 
     async def get_user_file(self, user_id: int, file_ids: list[int]) -> list[UserFile]:

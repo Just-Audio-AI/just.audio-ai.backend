@@ -3,7 +3,7 @@ from collections.abc import AsyncGenerator
 from typing import Annotated
 
 import firebase_admin
-from fastapi import Depends
+from fastapi import Depends, HTTPException, status, Request
 from firebase_admin import App as FirebaseApp
 from firebase_admin import credentials
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
@@ -25,6 +25,7 @@ from src.service.user_file_service import UserFileService
 from src.service.user_products_service import UserProductsService
 from src.service.user_service import UserService
 from src.settings import settings
+from src.service.payment.subscription_service import SubscriptionService
 
 db_url = os.environ.get("DATABASE_URL")
 db_pool_size = int(os.environ.get("DB_POOL_SIZE", 1))
@@ -155,3 +156,67 @@ async def get_user_products_service(
     ]
 ) -> UserProductsService:
     return UserProductsService(user_products_repository=user_products_repository)
+
+
+async def get_current_user_id(
+    request: Request,
+    auth_service: Annotated[AuthService, Depends(get_auth_service)]
+) -> int:
+    """
+    Проверяет JWT токен в заголовке Authorization и возвращает user_id из токена.
+    """
+    auth_header = request.headers.get("Authorization")
+    if not auth_header:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authorization header is missing",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
+    try:
+        # Извлекаем токен из заголовка
+        scheme, token = auth_header.split()
+        if scheme.lower() != "bearer":
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid authentication scheme",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid authorization header format",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
+    # Проверяем токен
+    payload = await auth_service.verify_token(token)
+    
+    # Получаем user_id из payload
+    user_id = payload.get("user_id")
+    if user_id is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Could not validate credentials, user_id not found in token",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
+    # Проверяем, существует ли пользователь с таким ID
+    user_exists = await auth_service.get_user_by_id(user_id)
+    if not user_exists:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="User not found",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
+    return user_id
+
+
+async def get_subscription_service(
+    user_product_repository: UserProductsRepository = Depends(get_user_products_repository),
+):
+    return SubscriptionService(
+        user_products_repository=user_product_repository,
+        settings=settings
+    )

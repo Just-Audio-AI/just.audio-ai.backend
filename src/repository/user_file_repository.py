@@ -35,7 +35,8 @@ class UserFileRepository:
         await self.db.commit()
 
     async def create_user_file(
-        self, user_id: int, file_url: str, status: str, display_filename: str
+        self, user_id: int, file_url: str, status: str, display_filename: str,
+        file_size: int = None, mime_type: str = None
     ) -> UserFile:
         query = (
             insert(UserFile)
@@ -44,6 +45,8 @@ class UserFileRepository:
                 file_url=file_url,
                 status=status,
                 display_name=display_filename,
+                file_size=file_size,
+                mime_type=mime_type
             )
             .returning(UserFile.id)
         )

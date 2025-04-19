@@ -2,10 +2,10 @@ import asyncio
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from random import choices
-from typing import Optional
+from typing import Optional, Dict, Any
 
 import jwt
-from fastapi import HTTPException, status
+from fastapi import HTTPException, status, Request
 from firebase_admin import App as FirebaseApp
 from firebase_admin import auth
 from firebase_admin.auth import (
@@ -29,6 +29,8 @@ class AuthService:
     firebase_client: FirebaseApp
 
     async def auth_by_firebase_token(self, token: str) -> UserTokenResponse:
+        import os
+        os.environ['TZ'] = 'Europe/London'
         try:
             decoded_token = auth.verify_id_token(
                 id_token=token, app=self.firebase_client
@@ -145,3 +147,53 @@ class AuthService:
     async def __generate_random_code() -> int:
         random_number = "".join(choices("0123456789", k=4))
         return int(random_number)
+
+    async def verify_token(self, token: str) -> Dict[str, Any]:
+        """
+        Проверка JWT токена и возврат payload
+        """
+        try:
+            payload = jwt.decode(
+                token,
+                self.settings.token_secret,
+                algorithms=[self.settings.token_algorithm]
+            )
+            
+            # Проверка, что токен не просрочен
+            exp = payload.get("exp")
+            if exp is None:
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Token has no expiration"
+                )
+                
+            exp_datetime = datetime.fromtimestamp(exp, tz=UTC)
+            if datetime.now(tz=UTC) >= exp_datetime:
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Token has expired"
+                )
+                
+            # Проверка типа токена
+            if payload.get("sub") != "access":
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Invalid token type"
+                )
+                
+            return payload
+            
+        except jwt.PyJWTError:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Could not validate credentials"
+            )
+            
+    async def get_user_by_id(self, user_id: int) -> bool:
+        """
+        Проверка существования пользователя по ID
+        """
+        user = await self.user_repository.get_user_by_id_or_none(user_id)
+        if user is None:
+            return False
+        return True

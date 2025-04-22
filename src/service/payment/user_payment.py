@@ -1,8 +1,15 @@
 from dataclasses import dataclass
 from uuid import UUID, uuid4
 
+from dateutil.relativedelta import relativedelta
+from fastapi import HTTPException
+from starlette import status
+
 from src.models import Transactions, Products
 from src.repository.payment.user_payment_repository import UserPaymentRepository
+from src.repository.products_repository import ProductsRepository
+from src.schemas.payment import CloudPaymentsRecurrentCallback
+from src.service.user_products_service import UserProductsService
 
 
 class TransactionWithProduct:
@@ -19,6 +26,8 @@ class TransactionWithProduct:
 @dataclass
 class UserPaymentService:
     user_payment_repository: UserPaymentRepository
+    user_products_service: UserProductsService
+    product_repository: ProductsRepository
 
     async def get_user_transactions(self, user_id: int) -> list[Transactions]:
         """Get all transactions for a user"""
@@ -51,6 +60,8 @@ class UserPaymentService:
         user_id: int,
         price: float,
         metainfo: dict,
+        external_transaction_id: str,
+        status: str,
     ) -> Transactions:
         return await self.user_payment_repository.create_transaction(
             uuid=uuid4(),
@@ -59,4 +70,31 @@ class UserPaymentService:
             user_id=user_id,
             price=price,
             metainfo=metainfo,
+            status=status,
+            external_transaction_id=external_transaction_id,
+        )
+
+    async def handle_recurrent_success_callback(
+        self, callback: CloudPaymentsRecurrentCallback
+    ):
+        interval = callback.Interval
+        exist_subs = (
+            await self.user_products_service.get_subscription_by_external_subs_id(
+                callback.Id
+            )
+        )
+        product = await self.product_repository.get_by_id(
+            product_id=exist_subs.product_id
+        )
+        if interval == "Month":
+            expires_at = exist_subs.expires_at + relativedelta(months=1)
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Не корректный интервал {interval}",
+            )
+        await self.user_products_service.update_subscription(
+            expires_at=expires_at,
+            user_subs_id=exist_subs.uuid,
+            minute_count=exist_subs.minute_count + product.minute_count,
         )

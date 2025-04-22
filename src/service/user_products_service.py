@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from datetime import datetime
-from uuid import uuid4, UUID
+from uuid import UUID
 
 from src.models import UserProducts
 from src.repository.user_products_repository import UserProductsRepository
@@ -25,7 +25,6 @@ class UserProductsService:
         )
         if not exist_user_product:
             return await self.user_products_repository.create_user_product(
-                uuid=uuid4(),
                 user_id=user_id,
                 minute_count=minute_count,
                 amount=amount,
@@ -62,15 +61,19 @@ class UserProductsService:
             is_active=True,
         )
 
-    async def get_subscription_by_id(self, subscription_id: str) -> UserProducts | None:
+    async def get_subscription_by_external_subs_id(
+        self, subscription_id: str
+    ) -> UserProducts | None:
         """Получить подписку по ID в CloudPayments"""
-        return await self.user_products_repository.get_subscription_by_id(subscription_id)
+        return await self.user_products_repository.get_subscription_by_external_subs_id(
+            subscription_id
+        )
 
     async def create_subscription(
         self,
         user_id: int,
         product_id: UUID,
-        subscription_id: str,
+        subscription_id: str | None,
         expires_at: datetime,
         amount: float,
         interval: str,
@@ -84,5 +87,14 @@ class UserProductsService:
             amount=amount,
             subscription_id=subscription_id,
             interval=interval,
-            expires_at=expires_at
+            expires_at=expires_at,
+        )
+
+    async def update_subscription(
+        self, minute_count: int, expires_at: datetime, user_subs_id: UUID
+    ) -> UserProducts:
+        return await self.user_products_repository.update_subscription(
+            expires_at=expires_at,
+            subscription_id=user_subs_id,
+            minute_count=minute_count,
         )

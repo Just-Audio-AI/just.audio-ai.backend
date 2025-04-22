@@ -264,7 +264,9 @@ async def delete_file(
 
     # Delete file from S3
     try:
-        await file_service.delete_file_from_s3(str(current_user_id), Path(file.file_url).name)
+        await file_service.delete_file_from_s3(
+            str(current_user_id), Path(file.file_url).name
+        )
     except Exception as e:
         print(f"Error deleting file from S3: {str(e)}")
         # Continue with DB deletion even if S3 deletion fails

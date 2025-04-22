@@ -1,5 +1,4 @@
 from datetime import datetime
-from typing import Optional
 from uuid import UUID
 from enum import Enum
 
@@ -29,7 +28,8 @@ class ProductResponse(BaseModel):
     )
     discount: float = Field(description="Discount percentage", ge=0, le=100)
     is_subs: bool = Field(
-        default=False, description="Whether this is a subscription or a one-time purchase"
+        default=False,
+        description="Whether this is a subscription or a one-time purchase",
     )
     billing_cycle: BillingCycle | None = Field(
         None, description="Billing cycle: month or year"
@@ -37,9 +37,7 @@ class ProductResponse(BaseModel):
     features: list[str] | None = Field(
         None, description="List of features included in the product"
     )
-    cta_text: str | None = Field(
-        None, description="Call to action button text"
-    )
+    cta_text: str | None = Field(None, description="Call to action button text")
     is_can_select_gpt_model: bool = Field(
         default=False, description="Whether the user can select GPT model"
     )

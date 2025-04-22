@@ -5,7 +5,7 @@ from random import choices
 from typing import Optional, Dict, Any
 
 import jwt
-from fastapi import HTTPException, status, Request
+from fastapi import HTTPException, status
 from firebase_admin import App as FirebaseApp
 from firebase_admin import auth
 from firebase_admin.auth import (
@@ -30,7 +30,8 @@ class AuthService:
 
     async def auth_by_firebase_token(self, token: str) -> UserTokenResponse:
         import os
-        os.environ['TZ'] = 'Europe/London'
+
+        os.environ["TZ"] = "Europe/London"
         try:
             decoded_token = auth.verify_id_token(
                 id_token=token, app=self.firebase_client
@@ -156,39 +157,38 @@ class AuthService:
             payload = jwt.decode(
                 token,
                 self.settings.token_secret,
-                algorithms=[self.settings.token_algorithm]
+                algorithms=[self.settings.token_algorithm],
             )
-            
+
             # Проверка, что токен не просрочен
             exp = payload.get("exp")
             if exp is None:
                 raise HTTPException(
                     status_code=status.HTTP_401_UNAUTHORIZED,
-                    detail="Token has no expiration"
+                    detail="Token has no expiration",
                 )
-                
+
             exp_datetime = datetime.fromtimestamp(exp, tz=UTC)
             if datetime.now(tz=UTC) >= exp_datetime:
                 raise HTTPException(
-                    status_code=status.HTTP_401_UNAUTHORIZED,
-                    detail="Token has expired"
+                    status_code=status.HTTP_401_UNAUTHORIZED, detail="Token has expired"
                 )
-                
+
             # Проверка типа токена
             if payload.get("sub") != "access":
                 raise HTTPException(
                     status_code=status.HTTP_401_UNAUTHORIZED,
-                    detail="Invalid token type"
+                    detail="Invalid token type",
                 )
-                
+
             return payload
-            
+
         except jwt.PyJWTError:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Could not validate credentials"
+                detail="Could not validate credentials",
             )
-            
+
     async def get_user_by_id(self, user_id: int) -> bool:
         """
         Проверка существования пользователя по ID

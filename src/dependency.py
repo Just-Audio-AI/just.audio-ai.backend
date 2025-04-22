@@ -25,7 +25,6 @@ from src.service.user_file_service import UserFileService
 from src.service.user_products_service import UserProductsService
 from src.service.user_service import UserService
 from src.settings import settings
-from src.service.payment.subscription_service import SubscriptionService
 
 db_url = os.environ.get("DATABASE_URL")
 db_pool_size = int(os.environ.get("DB_POOL_SIZE", 1))
@@ -56,7 +55,7 @@ async def get_s3_client() -> S3Client:
 
 
 async def get_file_service(
-    s3_client: Annotated[S3Client, Depends(get_s3_client)]
+    s3_client: Annotated[S3Client, Depends(get_s3_client)],
 ) -> FileService:
     return FileService(s3_client=s3_client)
 
@@ -68,7 +67,7 @@ async def get_user_file_repository(db: DB) -> UserFileRepository:
 async def get_user_file_service(
     user_file_repository: Annotated[
         UserFileRepository, Depends(get_user_file_repository)
-    ]
+    ],
 ) -> UserFileService:
     return UserFileService(user_file_repository=user_file_repository)
 
@@ -81,7 +80,7 @@ async def get_audio_ai_client() -> WhisperAIClient:
 
 
 async def get_audio_convert_service(
-    audio_ai_client: Annotated[WhisperAIClient, Depends(get_audio_ai_client)]
+    audio_ai_client: Annotated[WhisperAIClient, Depends(get_audio_ai_client)],
 ) -> AudioConvertService:
     return AudioConvertService(
         audio_ai_client=audio_ai_client,
@@ -117,21 +116,15 @@ async def get_products_repository(db: DB) -> ProductsRepository:
 
 
 async def get_products_service(
-    products_repository: Annotated[ProductsRepository, Depends(get_products_repository)]
+    products_repository: Annotated[
+        ProductsRepository, Depends(get_products_repository)
+    ],
 ) -> ProductsService:
     return ProductsService(products_repository=products_repository)
 
 
 async def get_user_payment_repository(db: DB) -> UserPaymentRepository:
     return UserPaymentRepository(db=db)
-
-
-async def get_user_payment_service(
-    user_payment_repository: Annotated[
-        UserPaymentRepository, Depends(get_user_payment_repository)
-    ]
-):
-    return UserPaymentService(user_payment_repository=user_payment_repository)
 
 
 async def get_user_products_repository(db: DB) -> UserProductsRepository:
@@ -153,14 +146,29 @@ async def get_user_service(
 async def get_user_products_service(
     user_products_repository: Annotated[
         UserProductsRepository, Depends(get_user_products_repository)
-    ]
+    ],
 ) -> UserProductsService:
     return UserProductsService(user_products_repository=user_products_repository)
 
 
+async def get_user_payment_service(
+    user_payment_repository: Annotated[
+        UserPaymentRepository, Depends(get_user_payment_repository)
+    ],
+    user_products_service: Annotated[
+        UserProductsService, Depends(get_user_products_service)
+    ],
+    product_repository: Annotated[ProductsRepository, Depends(get_products_repository)],
+):
+    return UserPaymentService(
+        user_payment_repository=user_payment_repository,
+        user_products_service=user_products_service,
+        product_repository=product_repository,
+    )
+
+
 async def get_current_user_id(
-    request: Request,
-    auth_service: Annotated[AuthService, Depends(get_auth_service)]
+    request: Request, auth_service: Annotated[AuthService, Depends(get_auth_service)]
 ) -> int:
     """
     Проверяет JWT токен в заголовке Authorization и возвращает user_id из токена.
@@ -172,7 +180,7 @@ async def get_current_user_id(
             detail="Authorization header is missing",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    
+
     try:
         # Извлекаем токен из заголовка
         scheme, token = auth_header.split()
@@ -188,10 +196,10 @@ async def get_current_user_id(
             detail="Invalid authorization header format",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    
+
     # Проверяем токен
     payload = await auth_service.verify_token(token)
-    
+
     # Получаем user_id из payload
     user_id = payload.get("user_id")
     if user_id is None:
@@ -200,7 +208,7 @@ async def get_current_user_id(
             detail="Could not validate credentials, user_id not found in token",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    
+
     # Проверяем, существует ли пользователь с таким ID
     user_exists = await auth_service.get_user_by_id(user_id)
     if not user_exists:
@@ -209,14 +217,5 @@ async def get_current_user_id(
             detail="User not found",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    
+
     return user_id
-
-
-async def get_subscription_service(
-    user_product_repository: UserProductsRepository = Depends(get_user_products_repository),
-):
-    return SubscriptionService(
-        user_products_repository=user_product_repository,
-        settings=settings
-    )

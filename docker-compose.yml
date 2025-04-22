@@ -1,19 +1,21 @@
 version: '3.9'
 
 services:
-#  app:
-#    build: .
-#    container_name: app
-#    depends_on:
-#      - db
-#      - minio
-#    environment:
-#      DATABASE_URL: postgres://postgres:password@db:5432/app_db
-#      MINIO_ENDPOINT: http://minio:9000
-#      MINIO_ACCESS_KEY: minioadmin
-#      MINIO_SECRET_KEY: minioadmin
-#    ports:
-#      - "8000:8000"
+  app:
+    build: .
+    container_name: app
+    depends_on:
+      - db
+      - minio
+      - redis
+    environment:
+      DATABASE_URL: postgres://postgres:password@db:5432/app_db
+      MINIO_ENDPOINT: http://minio:9000
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: minioadmin
+      REDIS_URL: redis://redis:6379/0
+    ports:
+      - "8000:8000"
 
   db:
     image: postgres:17.2-alpine
@@ -39,6 +41,20 @@ services:
     volumes:
       - minio_data:/data
     command: server /data --console-address :9001
+
+  worker:
+    build:
+      context: .
+      dockerfile: Worker.Dockerfile
+    depends_on:
+      - redis
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+
+  redis:
+    image: redis:7
+    ports:
+      - "6379:6379"
 
 volumes:
   postgres_data:

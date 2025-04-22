@@ -33,3 +33,4 @@ dnspython==2.7.0
 orjson==3.10.16
 python-dateutil==2.9.0.post0
 openai==1.75.0
+celery==5.5.1

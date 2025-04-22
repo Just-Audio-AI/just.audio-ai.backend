@@ -31,4 +31,5 @@ ffmpeg-python==0.2.0
 email-validator==2.2.0
 dnspython==2.7.0
 orjson==3.10.16
-python-dateutil==1.17.0
+python-dateutil==2.9.0.post0
+openai==1.75.0

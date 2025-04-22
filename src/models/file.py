@@ -4,7 +4,7 @@ from uuid import UUID
 
 from sqlalchemy import ForeignKey, func
 from sqlalchemy.dialects.postgresql import JSONB
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from src.models.base import Base
 
@@ -31,3 +31,6 @@ class UserFile(Base):
         comment="MIME-тип файла", nullable=True
     )
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
+
+    # Relationship with ChatSession
+    chat_sessions = relationship("ChatSession", back_populates="user_file")

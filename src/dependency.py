@@ -6,11 +6,14 @@ import firebase_admin
 from fastapi import Depends, HTTPException, status, Request
 from firebase_admin import App as FirebaseApp
 from firebase_admin import credentials
+from openai import OpenAI
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from src.client.mail_client import MailClient
+from src.client.openai_client import OpenAIClient
 from src.client.s3_client import S3Client
 from src.client.whisper_ai_client import WhisperAIClient
+from src.repository.chat_repository import ChatRepository
 from src.repository.payment.user_payment_repository import UserPaymentRepository
 from src.repository.products_repository import ProductsRepository
 from src.repository.user_file_repository import UserFileRepository
@@ -18,6 +21,7 @@ from src.repository.user_products_repository import UserProductsRepository
 from src.repository.user_repository import UserRepository
 from src.service.audio_convert_service import AudioConvertService
 from src.service.auth import AuthService
+from src.service.chat_service import ChatService
 from src.service.file_service import FileService
 from src.service.payment.user_payment import UserPaymentService
 from src.service.products_service import ProductsService
@@ -219,3 +223,31 @@ async def get_current_user_id(
         )
 
     return user_id
+
+
+async def get_chat_repository(db: DB) -> ChatRepository:
+    return ChatRepository(db=db)
+
+
+async def get_openai_client() -> OpenAIClient:
+    return OpenAIClient(
+        api_key=settings.OPENAI_API_KEY,
+        model=settings.OPENAI_MODEL,
+        client=OpenAI(api_key=settings.OPENAI_API_KEY),
+    )
+
+
+async def get_chat_service(
+    chat_repository: Annotated[ChatRepository, Depends(get_chat_repository)],
+    openai_client: Annotated[OpenAIClient, Depends(get_openai_client)],
+    user_products_repository: Annotated[
+        UserProductsRepository, Depends(get_user_products_repository)
+    ],
+    product_repository: Annotated[ProductsRepository, Depends(get_products_repository)],
+) -> ChatService:
+    return ChatService(
+        chat_repository=chat_repository,
+        openai_client=openai_client,
+        user_products_repository=user_products_repository,
+        product_repository=product_repository,
+    )

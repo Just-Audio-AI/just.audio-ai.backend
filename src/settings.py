@@ -31,6 +31,16 @@ class Settings(BaseSettings):
     cloudpayments_public_id: str = Field(validation_alias="CLOUDPAYMENTS_PUBLIC_ID")
     cloudpayments_api_secret: str = Field(validation_alias="CLOUDPAYMENTS_API_SECRET")
 
+    # OpenAI settings
+    OPENAI_API_KEY: str = Field(
+        validation_alias="OPENAI_API_KEY",
+        default="sk-your-api-key",
+    )
+    OPENAI_MODEL: str = Field(
+        validation_alias="OPENAI_MODEL",
+        default="gpt-3.5-turbo",
+    )
+
     @property
     def whisper_ai_callback_url(self) -> str:
         return f"{self.BASE_URL}/audio/convert/file/callback"

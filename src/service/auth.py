@@ -83,6 +83,7 @@ class AuthService:
             return None
 
     async def verify_auth_code(self, email: str, code: int) -> dict:
+        code = str(code)
         if code_with_email_link := await self.user_repository.get_code_with_email(
             email, code
         ):
@@ -145,9 +146,9 @@ class AuthService:
         return encoded_jwt
 
     @staticmethod
-    async def __generate_random_code() -> int:
+    async def __generate_random_code() -> str:
         random_number = "".join(choices("0123456789", k=4))
-        return int(random_number)
+        return random_number
 
     async def verify_token(self, token: str) -> Dict[str, Any]:
         """

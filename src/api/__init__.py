@@ -11,6 +11,7 @@ from src.api.payment.payments import router as payments_router  # noqa: F403 F40
 from src.api.payment.user_payment import (
     router as user_payment_router,  # noqa: F403 F401
 )
+from src.api.healthcheck import router as healthcheck_router  # noqa: F403 F401
 
 routers = [
     value

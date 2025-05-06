@@ -1,4 +1,5 @@
 from datetime import datetime
+from enum import Enum
 
 from pydantic import BaseModel, ConfigDict
 
@@ -11,8 +12,22 @@ class ChatMessageBase(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class GPTModelType(Enum):
+    PRO = "pro"
+    HIGH_SPEED = "high-speed"
+    THINKING = "thinking"
+
+
 class ChatMessageCreate(BaseModel):
     message: str
+    model: GPTModelType
+
+
+GPT_MODEL_NAME_TO_OPENAI_MODEL = {
+    GPTModelType.PRO: "gpt-4o",
+    GPTModelType.HIGH_SPEED: "gpt-4o-mini",
+    GPTModelType.THINKING: "o4-mini"
+}
 
 
 class ChatMessageResponse(ChatMessageBase):

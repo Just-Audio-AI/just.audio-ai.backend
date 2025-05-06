@@ -1,9 +1,14 @@
 from dataclasses import dataclass
 from datetime import datetime
+import logging
 from uuid import UUID
+
+from fastapi import HTTPException
+from starlette import status
 
 from src.models import UserProducts
 from src.repository.user_products_repository import UserProductsRepository
+from src.schemas.products import UserProductPlanResponse
 
 
 @dataclass
@@ -43,7 +48,7 @@ class UserProductsService:
         Convert seconds to minutes (rounded up) for deduction
         """
         # Calculate minutes with ceiling to round up any partial minute
-        minutes_to_deduct = seconds_used / 60.0  # Round up to nearest minute
+        minutes_to_deduct = seconds_used / 60.0  # Round up to minute
 
         try:
             return await self.user_products_repository.deduct_minutes(
@@ -97,4 +102,30 @@ class UserProductsService:
             expires_at=expires_at,
             subscription_id=user_subs_id,
             minute_count=minute_count,
+        )
+
+    async def get_user_product_plan(
+        self, user_id: int
+    ) -> UserProductPlanResponse:
+        logging.debug(f"Getting product plan for user: {user_id}")
+        user_products = await self.user_products_repository.get_user_subscriptions(user_id, True)
+        if not user_products:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+        user_product = user_products[0]
+        product = await self.user_products_repository.get_product_by_id(user_product.product_id)
+        return UserProductPlanResponse(
+            product_id=user_product.product_id,
+            minute_count_limit=product.minute_count,
+            minute_count_used=product.minute_count - user_product.minute_count,
+            expires_at=user_product.expires_at,
+            amount=user_product.amount,
+            is_can_select_gpt_model=product.is_can_select_gpt_model,
+            is_can_remove_melody=product.is_can_remove_melody,
+            is_can_remove_vocal=product.is_can_remove_vocal,
+            is_can_remove_noise=product.is_can_remove_noise,
+            gpt_request_limit_one_file=product.gpt_request_limit_one_file,
+            vtt_file_ext_support=product.vtt_file_ext_support,
+            srt_file_ext_support=product.srt_file_ext_support,
+            is_subscription=product.is_subs,
+            is_can_use_gpt=product.is_can_use_gpt
         )

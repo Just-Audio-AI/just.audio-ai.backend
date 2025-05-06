@@ -13,7 +13,8 @@ class OpenAIClient:
 
     async def chat_completion(
         self,
-        messages: List[Dict[str, str]],
+        messages: list[dict[str, str]],
+        openai_model: str,
         temperature: float = 0.7,
         max_tokens: Optional[int] = None,
     ) -> ChatCompletion:
@@ -23,6 +24,7 @@ class OpenAIClient:
         Args:
             messages: List of message objects with 'role' and 'content' fields
             temperature: Controls randomness (0-1)
+            openai_model: OpenAIModel name
             max_tokens: Maximum number of tokens to generate
 
         Returns:
@@ -37,13 +39,13 @@ class OpenAIClient:
         if max_tokens:
             payload["max_tokens"] = max_tokens
         response = self.client.chat.completions.create(
-            model=self.model,
+            model=openai_model or self.model,
             messages=messages,
         )
         return response
 
     async def get_chat_response(
-        self, messages: List[Dict[str, str]], temperature: float = 0.7
+        self, messages: list[dict[str, str]], openai_model: str, temperature: float = 0.7,
     ) -> str:
         """
         Get just the response text from a chat completion.
@@ -51,11 +53,12 @@ class OpenAIClient:
         Args:
             messages: List of message objects with 'role' and 'content' fields
             temperature: Controls randomness (0-1)
+            openai_model: str
 
         Returns:
             The assistant's response as a string
         """
-        response = await self.chat_completion(messages, temperature)
+        response = await self.chat_completion(messages, openai_model, temperature)
 
         try:
             return response.choices[0].message.content

@@ -111,7 +111,7 @@ async def send_chat_message(
 
         # Process the message and get a response
         response = await chat_service.process_message(
-            file_id=file_id, message_content=message.message, user_id=current_user_id
+            file_id=file_id, message_content=message.message, user_id=current_user_id, model_type=message.model
         )
 
         # Если превышен лимит, возвращаем сообщение об ошибке, но с кодом 200

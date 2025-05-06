@@ -65,3 +65,20 @@ class ProductResponse(BaseModel):
         if self.is_discount_active():
             return self.price_with_discount
         return self.price
+
+
+class UserProductPlanResponse(BaseModel):
+    product_id: UUID
+    minute_count_limit: int
+    minute_count_used: int
+    gpt_request_limit_one_file: int
+    is_can_select_gpt_model: int
+    vtt_file_ext_support: int
+    srt_file_ext_support: int
+    is_can_remove_melody: int
+    is_can_remove_vocal: int
+    is_can_remove_noise: int
+    is_can_use_gpt: bool
+    is_subscription: bool
+    amount: float
+    expires_at: datetime

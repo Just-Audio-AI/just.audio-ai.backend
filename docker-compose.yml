@@ -9,7 +9,7 @@ services:
       - minio
       - redis
     environment:
-      DATABASE_URL: postgres://postgres:password@db:5432/app_db
+      DATABASE_URL: postgresql+asyncpg://postgres:password@db:5432/app_db
       MINIO_ENDPOINT: http://minio:9000
       MINIO_ACCESS_KEY: minioadmin
       MINIO_SECRET_KEY: minioadmin

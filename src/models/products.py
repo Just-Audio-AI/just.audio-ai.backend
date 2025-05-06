@@ -35,6 +35,9 @@ class Products(Base):
     features: Mapped[Optional[str]] = mapped_column(
         comment="Список фич. Хранится как ['Фича 1', 'Фича 2']"
     )
+    is_can_use_gpt: Mapped[bool] = mapped_column(
+        comment="Поддерживается работа с GPT", default=True
+    )
     is_can_select_gpt_model: Mapped[bool] = mapped_column(
         comment="Может выбирать модель GPT"
     )
@@ -47,6 +50,18 @@ class Products(Base):
     )
     srt_file_ext_support: Mapped[bool] = mapped_column(
         comment="Поддерживается скачивание расшифровки в SRT формате"
+    )
+    is_can_remove_melody: Mapped[bool] = mapped_column(
+        comment="Поддерживается удаление мелодии", default=False
+    )
+    is_can_remove_vocal: Mapped[bool] = mapped_column(
+        comment="Поддерживается удаление голоса", default=False
+    )
+    is_can_remove_noise: Mapped[bool] = mapped_column(
+        comment="Поддерживается удаление шумов", default=False
+    )
+    is_can_improve_audio: Mapped[bool] = mapped_column(
+        comment="Поддерживается улучшение аудио", default=False
     )
 
 

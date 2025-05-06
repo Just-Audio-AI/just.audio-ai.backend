@@ -3,10 +3,12 @@ from collections.abc import AsyncGenerator
 from typing import Annotated
 
 import firebase_admin
+import httpx
 from fastapi import Depends, HTTPException, status, Request
 from firebase_admin import App as FirebaseApp
 from firebase_admin import credentials
 from openai import OpenAI
+from sqlalchemy import NullPool
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from src.client.mail_client import MailClient
@@ -30,13 +32,23 @@ from src.service.user_products_service import UserProductsService
 from src.service.user_service import UserService
 from src.settings import settings
 
-db_url = os.environ.get("DATABASE_URL")
+db_url = os.environ.get(
+    "DATABASE_URL", "postgresql+asyncpg://postgres:password@db:5432/app_db"
+)
 db_pool_size = int(os.environ.get("DB_POOL_SIZE", 1))
 db_max_overflow = int(os.environ.get("DB_MAX_OVERFLOW", 10))
 
 engine = create_async_engine(
     db_url, pool_size=db_pool_size, max_overflow=db_max_overflow
 )
+
+null_pool_db_engine = create_async_engine(
+    db_url,
+    poolclass=NullPool,  # <— здесь
+    echo=False,
+    future=True
+)
+null_pool_async_session = async_sessionmaker(null_pool_db_engine, expire_on_commit=False)
 async_session = async_sessionmaker(engine, expire_on_commit=False)
 
 
@@ -53,8 +65,8 @@ async def get_s3_client() -> S3Client:
         bucket_name="public-file",
         access_key="minioadmin",
         secret_key="minioadmin",
-        service_url="http://0.0.0.0:8000",
-        s3_url="127.0.0.1:9000",
+        service_url="http://app:8000",
+        s3_url="minio:9000",
     )
 
 
@@ -233,7 +245,7 @@ async def get_openai_client() -> OpenAIClient:
     return OpenAIClient(
         api_key=settings.OPENAI_API_KEY,
         model=settings.OPENAI_MODEL,
-        client=OpenAI(api_key=settings.OPENAI_API_KEY),
+        client=OpenAI(api_key=settings.OPENAI_API_KEY, http_client=httpx.Client(proxy="http://h1n8FUKAJ6:HnY08vEgSz@elr1c.ru:40832")),
     )
 
 

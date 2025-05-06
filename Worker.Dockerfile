@@ -1,10 +1,11 @@
-FROM ubuntu:22.04
+FROM python:3.13
 
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Установка зависимостей
+# Установка системных зависимостей
 RUN apt-get update && apt-get install -y \
     ffmpeg \
+    libsndfile1 \
     python3 \
     python3-pip \
     python3-venv \
@@ -12,16 +13,19 @@ RUN apt-get update && apt-get install -y \
     wget \
     && apt-get clean
 
-# Создание директории и установка зависимостей
+# Создание рабочей директории и установка Python-зависимостей
 WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Установка PyTorch (CPU-only)
+RUN pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
+
+# Установка Demucs и поддержки soundfile
+RUN pip install demucs soundfile
+
+# Копируем исходники
 COPY ./src ./src
 
-# Скачиваем модель RNNoise
-RUN mkdir -p /app/src/models && \
-    wget -O /app/src/ai_models/std.rnnn https://github.com/richardpl/arnndn-models/raw/master/std.rnnn
-
 # Команда по умолчанию — запуск Celery worker
-CMD ["celery", "-A", "celery.celery_app", "worker", "--loglevel=info"]
+CMD ["celery", "-A", "src.celery.celery_app", "worker", "--loglevel=info"]

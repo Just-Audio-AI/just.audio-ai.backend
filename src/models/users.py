@@ -22,6 +22,6 @@ class UserEmailWithCode(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     email: Mapped[str] = mapped_column(nullable=False)
-    code: Mapped[int] = mapped_column(nullable=False)
+    code: Mapped[str] = mapped_column(nullable=False)
     expires_at: Mapped[datetime] = mapped_column(DateTime)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())

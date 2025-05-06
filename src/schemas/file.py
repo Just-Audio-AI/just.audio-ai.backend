@@ -1,7 +1,6 @@
 from datetime import datetime
 from uuid import UUID
-
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class UserFileBase(BaseModel):
@@ -20,7 +19,16 @@ class UserFileBase(BaseModel):
 
 class UserFileDetail(UserFileBase):
     transcription: dict | None = None
+    transcription_text: str | None = None
+    transcription_vtt: str | None = None
+    transcription_srt: str | None = None
     duration: int | None = None
+    removed_noise_file_url: str | None = None
+    removed_vocals_file_url: str | None = None
+    removed_melody_file_url: str | None = None
+    removed_noise_file_status: str | None = None
+    removed_vocal_file_status: str | None = None
+    removed_melody_file_status: str | None = None
 
 
 class UserFileListResponse(BaseModel):
@@ -33,3 +41,8 @@ class UserFileListDetailResponse(BaseModel):
 
 class FileTranscriptionRequest(BaseModel):
     file_ids: list[int]
+
+
+class TranscriptionUpdateRequest(BaseModel):
+    transcription_type: str = Field(..., description="Type of transcription (json, text, vtt, srt)")
+    data: str = Field(..., description="Transcription data as string")

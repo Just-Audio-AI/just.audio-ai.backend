@@ -8,6 +8,7 @@ from src.models.file import UserFile
 from src.repository.chat_repository import ChatRepository
 from src.repository.products_repository import ProductsRepository
 from src.repository.user_products_repository import UserProductsRepository
+from src.schemas import GPTModelType, GPT_MODEL_NAME_TO_OPENAI_MODEL
 
 
 @dataclass
@@ -107,7 +108,7 @@ class ChatService:
         return True, "", session_id
 
     async def process_message(
-        self, file_id: int, message_content: str, user_id: int
+        self, file_id: int, message_content: str, user_id: int, model_type: GPTModelType
     ) -> Dict:
         """Process a user message, get an assistant response, and save both to the database."""
         # Get user file
@@ -159,7 +160,7 @@ class ChatService:
             openai_messages.append({"role": role, "content": prev_msg.content})
 
         # Get response from OpenAI
-        assistant_response = await self.openai_client.get_chat_response(openai_messages)
+        assistant_response = await self.openai_client.get_chat_response(openai_messages, openai_model=GPT_MODEL_NAME_TO_OPENAI_MODEL[model_type])
 
         # Save assistant response
         await self.save_assistant_message(session.id, assistant_response)

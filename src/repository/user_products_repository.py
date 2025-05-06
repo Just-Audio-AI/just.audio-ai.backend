@@ -6,7 +6,7 @@ from uuid import UUID, uuid4
 from sqlalchemy import insert, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.models.products import UserProducts, UserProductsToProductsM2M
+from src.models.products import UserProducts, UserProductsToProductsM2M, Products
 
 
 @dataclass
@@ -217,3 +217,6 @@ class UserProductsRepository:
         await self.db.commit()
 
         return res.scalar_one()
+
+    async def get_product_by_id(self, product_id: UUID) -> Products:
+        return await self.db.scalar(select(Products).where(Products.uuid == product_id))

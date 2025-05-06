@@ -19,5 +19,4 @@ async def auth_by_firebase_token(
     body: UserTokenRequest,
     auth_service: AuthService = Depends(get_auth_service),
 ):
-    print(body.token)
     return await auth_service.auth_by_firebase_token(token=body.token)

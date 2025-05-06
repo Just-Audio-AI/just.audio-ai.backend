@@ -2,6 +2,7 @@ import os
 import tempfile
 from pathlib import Path
 import uuid
+import logging
 
 import ffmpeg
 
@@ -23,6 +24,7 @@ from src.dependency import (
     get_file_service,
     get_user_file_service,
     get_user_products_service,
+    get_current_user_id,
 )
 from src.models.enums import FileProcessingStatus
 from src.schemas.file import FileTranscriptionRequest
@@ -32,19 +34,19 @@ from src.settings import settings
 from src.service.file_service import FileService
 from src.service.user_file_service import UserFileService
 from src.service.user_products_service import UserProductsService
+from src.celery.tasks import process_audio
 
 router = APIRouter(prefix="/audio/convert/file", tags=["audio-convert"])
 
 ALLOWED_AUDIO_EXTENSIONS = {".mp3", ".wav", ".ogg", ".flac", ".m4a", ".aac"}
 ALLOWED_VIDEO_EXTENSIONS = {".mp4", ".mov", ".avi", ".mkv", ".webm"}
 
-
 @router.post("/", status_code=status.HTTP_201_CREATED)
 async def upload_file(
-    user_id: int,
+    current_user_id: Annotated[int, Depends(get_current_user_id)],
+    file_service: Annotated[FileService, Depends(get_file_service)],
+    user_file_service: Annotated[UserFileService, Depends(get_user_file_service)],
     file: UploadFile = File(...),
-    file_service: FileService = Depends(get_file_service),
-    user_file_service: UserFileService = Depends(get_user_file_service),
 ):
     # Validate file extension
     extension = Path(file.filename).suffix.lower() if file.filename else ""
@@ -67,8 +69,6 @@ async def upload_file(
 
         # Process file based on its type
         final_file_path = temp_file_path
-        duration_seconds = 0
-
         # If it's a video, extract the audio
         if extension in ALLOWED_VIDEO_EXTENSIONS:
             audio_output_path = os.path.join(tmp_dir, f"audio_{uuid.uuid4()}.wav")
@@ -90,7 +90,8 @@ async def upload_file(
             duration_seconds = int(float(probe["format"]["duration"]))
         except ffmpeg.Error as e:
             # If duration detection fails, log but continue
-            print(f"Error detecting file duration: {str(e)}")
+            logging.warning(f"Error detecting file duration: {str(e)}")
+            raise e
 
         # Upload file to S3
         # try:
@@ -105,12 +106,12 @@ async def upload_file(
         # Upload to S3 and save record in database
         with open(final_file_path, "rb") as f:
             uploaded_file_url = await file_service.upload_file_to_s3(
-                f, user_id, Path(final_file_path).name
+                f, current_user_id, Path(final_file_path).name
             )
 
         # Create a user file record
         file_record = await user_file_service.create_user_file(
-            user_id,
+            current_user_id,
             uploaded_file_url,
             status=FileProcessingStatus.UPLOADED.value,
             display_filename=display_filename,
@@ -132,25 +133,19 @@ async def upload_file(
                 "duration_seconds": duration_seconds,
             },
         )
-        #
-        # except Exception as e:
-        #     raise HTTPException(
-        #         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        #         detail=f"Error uploading file: {str(e)}",
-        #     )
 
 
 @router.post("/transcription", status_code=status.HTTP_201_CREATED)
 async def launch_transcription(
     background_tasks: BackgroundTasks,
-    user_id: int,
+    current_user_id: Annotated[int, Depends(get_current_user_id)],
     user_file_service: Annotated[UserFileService, Depends(get_user_file_service)],
     audio_convert_service: Annotated[
         AudioConvertService, Depends(get_audio_convert_service)
     ],
     body: FileTranscriptionRequest,
 ):
-    user_files = await user_file_service.get_user_file(user_id, body.file_ids)
+    user_files = await user_file_service.get_user_file(current_user_id, body.file_ids)
     if not user_files:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
 
@@ -167,7 +162,7 @@ async def launch_transcription(
         background_tasks.add_task(
             audio_convert_service.convert_audio_to_text,
             audio_file_url=audio_file_url,
-            response_format="json",
+            response_format="verbose_json",
             language=None,  # Auto-detect language
             callback_url=callback_url,
         )
@@ -221,10 +216,29 @@ async def callback_whishper(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="File not found"
         )
+    
+    # Generate formatted transcriptions if result is a dictionary
+    transcription_text = None
+    transcription_vtt = None
+    transcription_srt = None
+    
+    if isinstance(result, dict):
+        # Generate plain text from JSON
+        transcription_text = file_service.json_to_plain_text(result)
+        
+        # Generate WebVTT format
+        transcription_vtt = file_service.json_to_vtt(result)
+        
+        # Generate SRT format
+        transcription_srt = file_service.json_to_srt(result)
 
-    # Save transcription result
+    # Save transcription result and formatted outputs
     await user_file_service.make_user_file_completed(
-        file_url=file_url, transcription_result=result
+        file_url=file_url, 
+        transcription_result=result,
+        transcription_text=transcription_text,
+        transcription_vtt=transcription_vtt,
+        transcription_srt=transcription_srt
     )
 
     # Deduct minutes from user's balance if file has duration
@@ -235,14 +249,14 @@ async def callback_whishper(
             )
         except ValueError as e:
             # Log the error but don't fail the request
-            print(f"Error deducting minutes: {str(e)}")
+            logging.error(f"Error deducting minutes: {str(e)}")
 
     # Delete the audio file from S3
     try:
         await file_service.delete_file_from_s3(user_id, file_name)
     except Exception as e:
         # Log the error but don't fail the request since we already have the transcription
-        print(f"Error deleting file from S3: {str(e)}")
+        logging.error(f"Error deleting file from S3: {str(e)}")
 
     return Response(status_code=status.HTTP_202_ACCEPTED)
 
@@ -250,12 +264,12 @@ async def callback_whishper(
 @router.delete("/{file_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_file(
     file_id: int,
-    user_id: int,
+    current_user_id: Annotated[int, Depends(get_current_user_id)],
     file_service: Annotated[FileService, Depends(get_file_service)],
     user_file_service: Annotated[UserFileService, Depends(get_user_file_service)],
 ) -> Response:
     # Get file info before deletion
-    file = await user_file_service.get_user_file(user_id, [file_id])
+    file = await user_file_service.get_user_file(current_user_id, [file_id])
     if not file:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
 
@@ -263,12 +277,185 @@ async def delete_file(
 
     # Delete file from S3
     try:
-        await file_service.delete_file_from_s3(str(user_id), Path(file.file_url).name)
+        await file_service.delete_file_from_s3(
+            str(current_user_id), Path(file.file_url).name
+        )
     except Exception as e:
-        print(f"Error deleting file from S3: {str(e)}")
+        logging.error(f"Error deleting file from S3: {str(e)}")
         # Continue with DB deletion even if S3 deletion fails
 
     # Delete record from database
     await user_file_service.delete_user_file(file_id)
 
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.post("/remove-noise/{file_id}", status_code=status.HTTP_202_ACCEPTED)
+async def remove_noise_from_audio(
+    file_id: int,
+    current_user_id: Annotated[int, Depends(get_current_user_id)],
+    user_file_service: Annotated[UserFileService, Depends(get_user_file_service)],
+):
+    """
+    Process audio file to remove noise.
+    """
+    # Get file info
+    user_files = await user_file_service.get_user_file(current_user_id, [file_id])
+    if not user_files:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="File not found or you don't have access to it",
+        )
+
+    user_file = user_files[0]  # Get first file since we queried by single ID
+
+    # Update file status to processing
+    await user_file_service.update_files_status(
+        [file_id], FileProcessingStatus.PROCESSING
+    )
+
+    try:
+        # Launch Celery task to process the audio
+        process_audio.delay(
+            file_id=file_id,
+            user_id=current_user_id,
+            file_url=user_file.file_url,
+            remove_noise_flag=True,
+        )
+    except Exception as e:
+        # В случае ошибки запуска Celery-задачи, устанавливаем статус FAILED
+        from src.models.enums import FileRemoveNoiseStatus
+        await user_file_service.update_noise_removed_status(file_id, status=FileRemoveNoiseStatus.FAILED)
+        await user_file_service.update_files_status([file_id], FileProcessingStatus.COMPLETED)
+        
+        # Логируем ошибку
+        logging.error(f"Failed to start noise removal task: {str(e)}")
+        
+        # Возвращаем ошибку клиенту
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to start audio processing",
+        )
+
+    return JSONResponse(
+        status_code=status.HTTP_202_ACCEPTED,
+        content={
+            "message": "Audio processing started",
+            "file_id": file_id,
+            "status": FileProcessingStatus.PROCESSING.value,
+        },
+    )
+
+
+@router.post("/remove-melody/{file_id}", status_code=status.HTTP_202_ACCEPTED)
+async def remove_melody_from_audio(
+    file_id: int,
+    current_user_id: Annotated[int, Depends(get_current_user_id)],
+    user_file_service: Annotated[UserFileService, Depends(get_user_file_service)],
+):
+    """
+    Process audio file to remove melody, keeping only vocals.
+    """
+    # Get file info
+    user_files = await user_file_service.get_user_file(current_user_id, [file_id])
+    if not user_files:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="File not found or you don't have access to it",
+        )
+
+    user_file = user_files[0]  # Get first file since we queried by single ID
+
+    # Update file status to processing
+    await user_file_service.update_files_status(
+        [file_id], FileProcessingStatus.PROCESSING
+    )
+
+    try:
+        # Launch Celery task to process the audio
+        process_audio.delay(
+            file_id=file_id,
+            user_id=current_user_id,
+            file_url=user_file.file_url,
+            remove_melody_flag=True,
+        )
+    except Exception as e:
+        # В случае ошибки запуска Celery-задачи, устанавливаем статус FAILED
+        from src.models.enums import FileRemoveMelodyStatus
+        await user_file_service.update_melody_removed_status(file_id, status=FileRemoveMelodyStatus.FAILED)
+        await user_file_service.update_files_status([file_id], FileProcessingStatus.COMPLETED)
+        
+        # Логируем ошибку
+        logging.error(f"Failed to start melody removal task: {str(e)}")
+        
+        # Возвращаем ошибку клиенту
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to start audio processing",
+        )
+
+    return JSONResponse(
+        status_code=status.HTTP_202_ACCEPTED,
+        content={
+            "message": "Melody removal started (extracting vocals)",
+            "file_id": file_id,
+            "status": FileProcessingStatus.PROCESSING.value,
+        },
+    )
+
+
+@router.post("/remove-vocals/{file_id}", status_code=status.HTTP_202_ACCEPTED)
+async def remove_vocals_from_audio(
+    file_id: int,
+    current_user_id: Annotated[int, Depends(get_current_user_id)],
+    user_file_service: Annotated[UserFileService, Depends(get_user_file_service)],
+):
+    """
+    Process audio file to remove vocals, keeping only instrumental.
+    """
+    # Get file info
+    user_files = await user_file_service.get_user_file(current_user_id, [file_id])
+    if not user_files:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="File not found or you don't have access to it",
+        )
+
+    user_file = user_files[0]  # Get first file since we queried by single ID
+
+    # Update file status to processing
+    await user_file_service.update_files_status(
+        [file_id], FileProcessingStatus.PROCESSING
+    )
+
+    try:
+        # Launch Celery task to process the audio
+        process_audio.delay(
+            file_id=file_id,
+            user_id=current_user_id,
+            file_url=user_file.file_url,
+            remove_vocals_flag=True,
+        )
+    except Exception as e:
+        # В случае ошибки запуска Celery-задачи, устанавливаем статус FAILED
+        from src.models.enums import FileRemoveVocalStatus
+        await user_file_service.update_vocals_removed_status(file_id, status=FileRemoveVocalStatus.FAILED)
+        await user_file_service.update_files_status([file_id], FileProcessingStatus.COMPLETED)
+        
+        # Логируем ошибку
+        logging.error(f"Failed to start vocals removal task: {str(e)}")
+        
+        # Возвращаем ошибку клиенту
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to start audio processing",
+        )
+
+    return JSONResponse(
+        status_code=status.HTTP_202_ACCEPTED,
+        content={
+            "message": "Vocals removal started (extracting instrumental)",
+            "file_id": file_id,
+            "status": FileProcessingStatus.PROCESSING.value,
+        },
+    )

@@ -5,7 +5,7 @@ from pydantic_settings import BaseSettings
 class Settings(BaseSettings):
     database_url: str = Field(
         validation_alias="DATABASE_URL",
-        default="postgresql+asyncpg://postgres:password@0.0.0.0:5432/app_db",
+        default="postgresql+asyncpg://postgres:password@db:5432/app_db",
     )
     WISPER_AI_BASE_URL: str = Field(
         validation_alias="WISPER_AI_BASE_URL",
@@ -17,7 +17,7 @@ class Settings(BaseSettings):
     )
     BASE_URL: str = Field(
         validation_alias="BASE_URL",
-        default="https://c1e6-46-226-166-83.ngrok-free.app",
+        default="https://c928-46-226-166-83.ngrok-free.app",
     )
     from_email: str = "i@saidmagomedov.ru"
     SMTP_PORT: int = 465
@@ -27,9 +27,15 @@ class Settings(BaseSettings):
     token_secret: str = "Sdasdad3w#RmF34ef43%E5&*6DV%$5DSvBF*fY9V(y*&VNFdfBU(t8DnfDS"
     token_algorithm: str = "HS256"
 
-    # CloudPayments settings
-    cloudpayments_public_id: str = Field(validation_alias="CLOUDPAYMENTS_PUBLIC_ID")
-    cloudpayments_api_secret: str = Field(validation_alias="CLOUDPAYMENTS_API_SECRET")
+    # OpenAI settings
+    OPENAI_API_KEY: str = Field(
+        validation_alias="OPENAI_API_KEY",
+        default="sk-your-api-key",
+    )
+    OPENAI_MODEL: str = Field(
+        validation_alias="OPENAI_MODEL",
+        default="gpt-3.5-turbo",
+    )
 
     @property
     def whisper_ai_callback_url(self) -> str:

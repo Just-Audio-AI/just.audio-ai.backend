@@ -97,8 +97,9 @@ class UserRepository:
             await session.commit()
             return res
 
-    async def save_code_with_email(self, email: str, code: int) -> None:
+    async def save_code_with_email(self, email: str, code: str) -> None:
         async with self.db as session:
+            await session.execute(delete(UserEmailWithCode).where(UserEmailWithCode.email == email))
             expires_at = dt.datetime.now(tz=dt.UTC) + dt.timedelta(minutes=25)
             await session.execute(
                 insert(UserEmailWithCode).values(
@@ -112,13 +113,13 @@ class UserRepository:
             return
 
     async def get_code_with_email(
-        self, email: str, code: int
+        self, email: str, code: str
     ) -> UserEmailWithCode | None:
         async with self.db as session:
             query = select(UserEmailWithCode).where(
                 UserEmailWithCode.email == email, UserEmailWithCode.code == code
             )
-            return (await session.execute(query)).scalar_one_or_none()
+            return await session.scalar(query)
 
     async def delete_all_email_codes(self, email: str) -> None:
         async with self.db as session:

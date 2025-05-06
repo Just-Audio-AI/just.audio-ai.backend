@@ -48,8 +48,16 @@ class S3Client:
                 detail=f"Failed to upload file: {file.filename}. Error: {str(e)}",
             )
 
-    def get_file(self, bucket: str, file_key: str) -> File:
-        return self.s3.get_object(bucket_name=bucket, object_name=file_key)
+    def get_file(
+        self,
+        bucket: str,
+        file_key: str,
+        offset: int | None = None,
+        length: int | None = None,
+    ) -> File:
+        return self.s3.get_object(
+            bucket_name=bucket, object_name=file_key, length=length, offset=offset
+        )
 
     def delete_file(self, file_key: str) -> None:
         """

@@ -51,6 +51,8 @@ class UserPaymentRepository:
         user_id: int,
         price: float,
         metainfo: dict,
+        external_transaction_id: str,
+        status: str,
     ) -> Transactions:
         """
         Create a transaction record in the database
@@ -64,6 +66,8 @@ class UserPaymentRepository:
                 price=price,
                 metainfo=metainfo,
                 user_product_id=user_product_id,
+                external_transaction_id=external_transaction_id,
+                status=status,
             )
             .returning(Transactions)
         )

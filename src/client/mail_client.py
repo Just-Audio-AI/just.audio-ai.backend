@@ -13,9 +13,9 @@ class MailClient:
         self.smtp_port = settings.SMTP_PORT
         self.smtp_password = settings.SMTP_PASSWORD
 
-    async def send_code(self, code: int, to: str) -> None:
+    async def send_code(self, code: str, to: str) -> None:
         msg = await self.__build_message(
-            f"Fitra auth code {code}", f"Your code is {code}", to
+            f"Just.Audio.AI auth code {code}", f"Your code is {code}", to
         )
         await self.__send_message(msg)
 

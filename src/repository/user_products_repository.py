@@ -106,15 +106,13 @@ class UserProductsRepository:
         user_product = await self.get_user_product(user_id)
         if not user_product:
             raise ValueError(f"User {user_id} has no product with minutes")
-
-        new_minute_count = max(0, user_product.minute_count - minutes_to_deduct)
-
+        minute_count_used = user_product.minute_count_used + minutes_to_deduct
         query = (
             update(UserProducts)
             .where(
                 UserProducts.uuid == user_product.uuid, UserProducts.user_id == user_id
             )
-            .values(minute_count=new_minute_count)
+            .values(minute_count_used=minute_count_used)
             .returning(UserProducts)
         )
 

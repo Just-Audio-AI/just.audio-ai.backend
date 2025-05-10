@@ -15,11 +15,15 @@ class Settings(BaseSettings):
         validation_alias="WISPER_AI_AUTH_TOKEN",
         default="x9YLlWxzSFQVMkmiYSzcur7T4Bf84zoT",
     )
+    PROXY_URL: str = Field(
+        validation_alias="PROXY_URL",
+        default="url"
+    )
     BASE_URL: str = Field(
         validation_alias="BASE_URL",
         default="https://c928-46-226-166-83.ngrok-free.app",
     )
-    from_email: str = "i@saidmagomedov.ru"
+    from_email: str = "just.audio.ai@saidmagomedov.ru"
     SMTP_PORT: int = 465
     SMTP_HOST: str = "smtp.yandex.ru"
     SMTP_PASSWORD: str = "tkorlhjwddkalbqy"

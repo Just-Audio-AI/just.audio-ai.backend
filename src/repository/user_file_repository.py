@@ -34,7 +34,7 @@ class UserFileRepository:
         await self.db.execute(query)
         await self.db.commit()
 
-    async def update_file_duration(self, file_id: int, duration: int) -> None:
+    async def update_file_duration(self, file_id: int, duration: float) -> None:
         """
         Update the duration of a file in seconds
         """
@@ -44,6 +44,11 @@ class UserFileRepository:
 
     async def update_files_status(self, file_ids: list[int], status: str) -> None:
         query = update(UserFile).where(UserFile.id.in_(file_ids)).values(status=status)
+        await self.db.execute(query)
+        await self.db.commit()
+
+    async def update_files_transcription_status(self, file_ids: list[int], status: str) -> None:
+        query = update(UserFile).where(UserFile.id.in_(file_ids)).values(transcription_status=status)
         await self.db.execute(query)
         await self.db.commit()
 
@@ -79,7 +84,7 @@ class UserFileRepository:
         return (await self.db.scalars(query)).all()
 
     async def get_user_files(self, user_id: int, status: str = None) -> list[UserFile]:
-        query = select(UserFile).where(UserFile.user_id == user_id)
+        query = select(UserFile).where(UserFile.user_id == user_id).order_by(UserFile.updated_at.desc())
 
         if status:
             query = query.where(UserFile.status == status)
@@ -215,6 +220,24 @@ class UserFileRepository:
             update(UserFile)
             .where(UserFile.id == file_id)
             .values(transcription_srt=srt)
+        )
+        await self.db.execute(query)
+        await self.db.commit()
+
+    async def update_enhance_audio_status(self, file_id: int, status: str) -> None:
+        query = (
+            update(UserFile)
+            .where(UserFile.id == file_id)
+            .values(improved_audio_file_status=status)
+        )
+        await self.db.execute(query)
+        await self.db.commit()
+
+    async def update_enhance_audio_url(self, file_id: int, url: str) -> None:
+        query = (
+            update(UserFile)
+            .where(UserFile.id == file_id)
+            .values(improved_audio_file_url=url)
         )
         await self.db.execute(query)
         await self.db.commit()

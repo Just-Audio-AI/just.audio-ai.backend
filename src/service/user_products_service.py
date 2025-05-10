@@ -42,7 +42,7 @@ class UserProductsService:
             product_id=product_id,
         )
 
-    async def deduct_minutes(self, user_id: int, seconds_used: int) -> UserProducts:
+    async def deduct_minutes(self, user_id: int, seconds_used: float) -> UserProducts:
         """
         Deduct minutes from user's balance after file transcription
         Convert seconds to minutes (rounded up) for deduction
@@ -116,13 +116,14 @@ class UserProductsService:
         return UserProductPlanResponse(
             product_id=user_product.product_id,
             minute_count_limit=product.minute_count,
-            minute_count_used=product.minute_count - user_product.minute_count,
+            minute_count_used=int(user_product.minute_count_used),
             expires_at=user_product.expires_at,
             amount=user_product.amount,
             is_can_select_gpt_model=product.is_can_select_gpt_model,
             is_can_remove_melody=product.is_can_remove_melody,
             is_can_remove_vocal=product.is_can_remove_vocal,
             is_can_remove_noise=product.is_can_remove_noise,
+            is_can_enhance_audio=product.is_can_improve_audio,
             gpt_request_limit_one_file=product.gpt_request_limit_one_file,
             vtt_file_ext_support=product.vtt_file_ext_support,
             srt_file_ext_support=product.srt_file_ext_support,

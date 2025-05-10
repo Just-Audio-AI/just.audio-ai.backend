@@ -78,6 +78,7 @@ class UserProductPlanResponse(BaseModel):
     is_can_remove_melody: int
     is_can_remove_vocal: int
     is_can_remove_noise: int
+    is_can_enhance_audio: bool
     is_can_use_gpt: bool
     is_subscription: bool
     amount: float

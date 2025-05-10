@@ -23,6 +23,9 @@ class FileService:
     def get_public_bucket(self) -> set:
         return {"public-file"}
 
+    def get_object_size(self, bucket_name: str, file_key: str) -> int:
+        return self.s3_client.get_object_size(bucket_name=bucket_name, object_name=file_key)
+
     def get_file_from_bucket(
         self,
         bucket_name: str,

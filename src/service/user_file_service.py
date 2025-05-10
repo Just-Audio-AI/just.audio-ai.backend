@@ -1,7 +1,8 @@
 from dataclasses import dataclass
 
 from src.models import UserFile
-from src.models.enums import FileProcessingStatus, FileRemoveMelodyStatus, FileRemoveNoiseStatus, FileRemoveVocalStatus
+from src.models.enums import FileProcessingStatus, FileRemoveMelodyStatus, FileRemoveNoiseStatus, FileRemoveVocalStatus, \
+    FileTranscriptionStatus, FileImproveAudioStatus
 from src.repository.user_file_repository import UserFileRepository
 
 
@@ -26,7 +27,7 @@ class UserFileService:
             transcription_srt=transcription_srt,
         )
 
-    async def update_file_duration(self, file_id: int, duration: int) -> None:
+    async def update_file_duration(self, file_id: int, duration: float) -> None:
         """
         Update the duration of a file in seconds
         """
@@ -36,6 +37,14 @@ class UserFileService:
         self, file_ids: list[int], status: FileProcessingStatus
     ) -> None:
         await self.user_file_repository.update_files_status(
+            file_ids=file_ids,
+            status=status.value,
+        )
+
+    async def update_files_transcription_status(
+        self, file_ids: list[int], status: FileTranscriptionStatus
+    ):
+        await self.user_file_repository.update_files_transcription_status(
             file_ids=file_ids,
             status=status.value,
         )
@@ -120,6 +129,20 @@ class UserFileService:
         """
         await self.user_file_repository.update_vocals_removed_url(
             file_id, removed_vocals_url
+        )
+
+    async def update_enhance_audio_status(
+        self, file_id: int, status: FileImproveAudioStatus
+    ):
+        await self.user_file_repository.update_enhance_audio_status(
+            file_id=file_id, status=status.value
+        )
+
+    async def update_enhance_audio_url(
+        self, file_id: int, file_url: str
+    ):
+        await self.user_file_repository.update_enhance_audio_url(
+            file_id=file_id, url=file_url
         )
 
     async def update_transcription_json(self, file_id: int, transcription_data: dict) -> None:

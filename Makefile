@@ -13,3 +13,8 @@ deploy-backend-build:
 .PHONY: deploy-worker-build-push
 deploy-worker-build:
 	docker buildx build --platform linux/amd64 -t saidmagomedov/backend-worker:latest -f Worker.Dockerfile . --push
+
+
+.PHONY: deploy-worker-enhance-build-push
+deploy-worker-build:
+	docker buildx build --platform linux/amd64 -t saidmagomedov/backend-worker-enhace:latest -f WorkerEnhance.Dockerfile . --push

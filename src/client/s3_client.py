@@ -1,7 +1,7 @@
 from typing import BinaryIO
 
 from fastapi import File, HTTPException
-from minio import Minio
+from minio import Minio, S3Error
 
 
 class S3Client:
@@ -45,8 +45,16 @@ class S3Client:
         except Exception as e:
             raise HTTPException(
                 status_code=500,
-                detail=f"Failed to upload file: {file.filename}. Error: {str(e)}",
+                detail=f"Failed to upload file: {file_key}. Error: {str(e)}",
             )
+
+    def get_object_size(self, bucket_name: str, object_name: str) -> int:
+        try:
+            info = self.s3.stat_object(bucket_name, object_name)
+            return info.size
+        except S3Error as err:
+            # обработка ошибки
+            raise RuntimeError(f"Не удалось получить размер объекта: {err}")
 
     def get_file(
         self,

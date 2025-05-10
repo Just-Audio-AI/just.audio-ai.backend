@@ -1,5 +1,8 @@
+from celery import shared_task
+
 from src.celery.celery_app import celery_app
 from src.service.audio_processing import remove_noise, remove_melody, remove_vocals
+from src.service.enhance_audio import enhance_audio_async
 import tempfile
 import os
 import logging
@@ -55,6 +58,11 @@ def process_audio(
             logging.error(f"[ERROR] Failed to update error status: {str(inner_e)}")
         
         raise e
+
+
+@shared_task(name="enhance_audio", queue="enhance")
+def enhance_audio_task(file_id: int, user_id: int, file_url: str, preset: str) -> dict:
+    return asyncio.run(enhance_audio_async(file_id, user_id, file_url, preset=preset))
 
 
 async def process_audio_async(

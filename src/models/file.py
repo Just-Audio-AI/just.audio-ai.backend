@@ -8,7 +8,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from src.models.base import Base
 from src.models.enums import FileRemoveNoiseStatus, FileRemoveVocalStatus, FileRemoveMelodyStatus, \
-    FileImproveAudioStatus, FileTranscriptionStatus
+    FileImproveAudioStatus
 
 
 class UserFile(Base):
@@ -21,10 +21,6 @@ class UserFile(Base):
     external_id: Mapped[Optional[UUID]]
     display_name: Mapped[str]
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
-    updated_at: Mapped[datetime] = mapped_column(server_onupdate=func.now(), server_default=func.now())
-    transcription_status: Mapped[Optional[str]] = mapped_column(
-        comment="Статус расшифровки", default=FileTranscriptionStatus.NOT_STARTED.value
-    )
     transcription: Mapped[Optional[dict]] = mapped_column(
         JSONB(none_as_null=True), nullable=True
     )
@@ -38,7 +34,7 @@ class UserFile(Base):
     transcription_srt: Mapped[Optional[str]] = mapped_column(
         comment="Транскрипция в формате SRT", nullable=True
     )
-    duration: Mapped[Optional[float]] = mapped_column(
+    duration: Mapped[Optional[int]] = mapped_column(
         comment="Длительность файла в секундах"
     )
     file_size: Mapped[Optional[int]] = mapped_column(

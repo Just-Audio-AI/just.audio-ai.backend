@@ -23,14 +23,8 @@ services:
       MINIO_ENDPOINT: ${MINIO_ENDPOINT}
       MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY}
       MINIO_SECRET_KEY: ${MINIO_SECRET_KEY}
-      BASE_URL: ${BASE_URL}
-      OPENAI_API_KEY: ${OPENAI_API_KEY}
-      WISPER_AI_BASE_URL: ${WISPER_AI_BASE_URL}
-      PROXY_URL: ${PROXY_URL}
     ports:
       - "8000"
-    volumes:
-      - /home/app/models:/app/src/ai_models:ro
     networks:
       - appnet
 
@@ -49,7 +43,7 @@ services:
       - minio_data:/data
     networks:
       - appnet
-saidmagomedov/backend-worker-enhace
+
   worker:
     image: saidmagomedov/backend-worker:latest
     depends_on:
@@ -57,25 +51,8 @@ saidmagomedov/backend-worker-enhace
     environment:
       REDIS_URL: ${REDIS_URL}
       DATABASE_URL: ${DATABASE_URL}
-    volumes:
-      - /home/app/models:/app/src/ai_models:ro
     networks:
       - appnet
-
-  enhance_worker:
-    image: saidmagomedov/backend-worker-enhance:latest
-    container_name: enhance_worker
-    environment:
-      REDIS_URL: ${REDIS_URL}
-      DATABASE_URL: ${DATABASE_URL}
-    volumes:
-      - /home/app/models:/app/src/ai_models:ro
-    networks:
-      - appnet
-    deploy:
-      resources:
-        limits:
-          cpus: '2.0'
 
 volumes:
   postgres_data:

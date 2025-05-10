@@ -1,6 +1,5 @@
-import re
 from typing import Annotated
-from fastapi import APIRouter, Depends, Query, HTTPException, status, Response, Body, Request
+from fastapi import APIRouter, Depends, Query, HTTPException, status, Response, Body
 from fastapi.responses import StreamingResponse
 import os
 import json
@@ -62,42 +61,32 @@ async def get_user_file_by_id_detail(
     return file[0]
 
 
-
-@router.get("/download")
+@router.get(
+    "/download",
+    description="Download a file using its file key",
+)
 async def download_file(
-    request: Request,
     file_service: Annotated[FileService, Depends(get_file_service)],
-    file_key: str = Query(...),
+    file_key: str = Query(..., description="File key to download (full URL path)"),
     stream: bool | None = Query(...)
 ):
+    """
+    Download a file using its file key.
+    This endpoint fetches the file from the provided URL and serves it directly to the client.
+    The user must own the file they're trying to download.
+    """
     if not file_key:
-        raise HTTPException(status_code=404, detail="File key is required")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="File key is required",
+        )
 
-    # Извлекаем имя файла
-    parsed = urlparse(file_key)
-    filename = parsed.path.rsplit("/", 1)[-1]
+    parsed_url = urlparse(file_key)
+    file_path = parsed_url.path
+    filename = os.path.basename(file_path)
 
-    # Узнаём полный размер через stat_object
-    full_size = file_service.get_object_size("public-file", file_key)
-
-    # Разбираем заголовок Range
-    range_header = request.headers.get("range")
-    start = 0
-    end = full_size - 1
-    if range_header:
-        m = re.match(r"bytes=(\d+)-(\d*)", range_header)
-        if not m:
-            raise HTTPException(status_code=400, detail="Invalid Range header")
-        start = int(m.group(1))
-        if m.group(2):
-            end = int(m.group(2))
-        if start > end or end >= full_size:
-            raise HTTPException(status_code=416, detail="Requested Range Not Satisfiable")
-
-    length = end - start + 1
-
-    # Определяем content_type по расширению
-    content_type = "application/octet-stream"
+    # Determine content type based on file extension
+    content_type = "application/octet-stream"  # Default content type
     if filename.endswith(".mp3"):
         content_type = "audio/mpeg"
     elif filename.endswith(".wav"):
@@ -107,60 +96,29 @@ async def download_file(
     elif filename.endswith(".flac"):
         content_type = "audio/flac"
 
-    # Заголовки ответа
-    headers = {
-        "Accept-Ranges": "bytes",
-        "Content-Disposition": f'attachment; filename="{filename}"',
-        "Content-Type": content_type,
-    }
-
-    status_code = status.HTTP_200_OK
-    if range_header:
-        headers.update({
-            "Content-Range": f"bytes {start}-{end}/{full_size}",
-            "Content-Length": str(length),
-        })
-        status_code = status.HTTP_206_PARTIAL_CONTENT
-    else:
-        headers["Content-Length"] = str(full_size)
-
-    # Берём нужный диапазон из MinIO
-    response = file_service.get_file_from_bucket(
-        bucket_name="public-file",
-        file_key=file_key,
-        offset=start,
-        length=length
-    )
-
-    # Если не stream и нет Range — возвращаем весь файл разом
-    if not stream and not range_header:
-        data = response.read()
-        response.close()
+    response = file_service.get_file_from_bucket("public-file", file_key)
+    # Create a generator function to stream the file content
+    if not stream:
         return Response(
-            content=data,
-            status_code=status_code,
-            headers=headers,
-            media_type=content_type
+            content=response.read(),
+            media_type=content_type,
+            headers={"Content-Disposition": f'attachment; filename="{filename}"'}
         )
+    async def file_stream():
+        chunk_size = 64 * 1024  # 64KB
+        while True:
+            data = response.read(chunk_size)
+            if not data:
+                break
+            yield data
 
-    # Иначе — стримим чанками
-    async def iterator():
-        try:
-            while True:
-                chunk = response.read(64 * 1024)
-                if not chunk:
-                    break
-                yield chunk
-        finally:
-            response.close()
-            response.release_conn()
-
+    # Return a streaming response
     return StreamingResponse(
-        iterator(),
-        status_code=status_code,
-        headers=headers,
-        media_type=content_type
+        file_stream(),
+        media_type=content_type,
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
+
 
 @router.post(
     "/{file_id}/transcription",

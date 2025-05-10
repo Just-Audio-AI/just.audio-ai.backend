@@ -26,7 +26,7 @@ class CloudPaymentsCallback(BaseModel):
     TransactionId: int
     Amount: float
     Status: str
-    Data: dict | None = None # Содержит productId, userId, minuteCount из виджета
+    Data: dict  # Содержит productId, userId, minuteCount из виджета
     SubscriptionId: str | None = None
     AccountId: int
 
@@ -43,25 +43,22 @@ async def handle_cloudpayments_callback(
     ],
 ) -> dict:
     """
-    Обработка callback'а от CloudPayments для Pay уведомлений
+    Обработка callback'а от CloudPayments для обычных платежей
     """
 
     form_data = await request.form()
     data_dict = dict(form_data)
-    callback = CloudPaymentsCallback(**data_dict)
-
-    exist_transaction = await user_payment_service.get_transaction_by_ext_id(external_id=str(callback.TransactionId))
-    if exist_transaction:
-        return {"code": 0}
 
     # Преобразуем поле Data из JSON-строки в словарь
     try:
-        callback.Data = json.loads(data_dict["Data"])
+        data_dict["Data"] = json.loads(data_dict["Data"])
     except (KeyError, json.JSONDecodeError) as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Неверный формат поля Data: {str(e)}",
         )
+
+    callback = CloudPaymentsCallback(**data_dict)
 
     # Проверяем статус транзакции
     if callback.Status != "Completed":
@@ -101,7 +98,7 @@ async def handle_cloudpayments_callback(
         # 1. Создаем запись о покупке
         user_products = await user_products_service.create_user_product(
             user_id=user_id,
-            minute_count=product.minute_count,
+            minute_count=minute_count,
             amount=callback.Amount,
             product_id=product_id,
         )

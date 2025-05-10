@@ -1,12 +1,6 @@
-import logging
 from dataclasses import dataclass
 
 import httpx
-
-from src.settings import settings
-
-logging.basicConfig(level=logging.DEBUG)
-logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -29,14 +23,13 @@ class WhisperAIClient:
         if language:
             data["language"] = language
 
-        async with httpx.AsyncClient(timeout=None, proxy=settings.PROXY_URL) as client:
+        async with httpx.AsyncClient(timeout=None) as client:
             try:
                 response = await client.post(
                     url=f"{self.base_url}",
                     json=data,
                     headers={"Authorization": f"Bearer {self.auth_token}"},
                 )
-                logger.info(f"Запрос в whisper  по audio_file_url{audio_file_url}")
                 return response.json()
             except httpx.ReadTimeout:
                 pass

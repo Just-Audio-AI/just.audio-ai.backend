@@ -53,9 +53,6 @@ class UserPaymentService:
                 return TransactionWithProduct(transaction=None)
             return TransactionWithProduct(transaction=transactions[0])
 
-    async def get_transaction_by_ext_id(self, external_id: str):
-        return await self.user_payment_repository.get_transaction_by_ext_id(external_id=external_id)
-
     async def create_transaction(
         self,
         product_id: UUID,
@@ -80,25 +77,24 @@ class UserPaymentService:
     async def handle_recurrent_success_callback(
         self, callback: CloudPaymentsRecurrentCallback
     ):
-        if callback.Status == "Active":
-            interval = callback.Interval
-            exist_subs = (
-                await self.user_products_service.get_subscription_by_external_subs_id(
-                    callback.Id
-                )
+        interval = callback.Interval
+        exist_subs = (
+            await self.user_products_service.get_subscription_by_external_subs_id(
+                callback.Id
             )
-            product = await self.product_repository.get_by_id(
-                product_id=exist_subs.product_id
+        )
+        product = await self.product_repository.get_by_id(
+            product_id=exist_subs.product_id
+        )
+        if interval == "Month":
+            expires_at = exist_subs.expires_at + relativedelta(months=1)
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Не корректный интервал {interval}",
             )
-            if interval == "Month":
-                expires_at = exist_subs.expires_at + relativedelta(months=1)
-            else:
-                raise HTTPException(
-                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                    detail=f"Не корректный интервал {interval}",
-                )
-            await self.user_products_service.update_subscription(
-                expires_at=expires_at,
-                user_subs_id=exist_subs.uuid,
-                minute_count=exist_subs.minute_count + product.minute_count,
-            )
+        await self.user_products_service.update_subscription(
+            expires_at=expires_at,
+            user_subs_id=exist_subs.uuid,
+            minute_count=exist_subs.minute_count + product.minute_count,
+        )

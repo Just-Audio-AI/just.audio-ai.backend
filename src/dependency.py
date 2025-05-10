@@ -33,20 +33,18 @@ from src.service.user_service import UserService
 from src.settings import settings
 
 db_url = os.environ.get(
-    "DATABASE_URL", "postgresql+asyncpg://gen_user:Elf)gVd5wX)Dt@212.60.21.170:5432/audio_ai_prod"
+    "DATABASE_URL", "postgresql+asyncpg://postgres:password@db:5432/app_db"
 )
-db_pool_size = int(os.environ.get("DB_POOL_SIZE", 5))
+db_pool_size = int(os.environ.get("DB_POOL_SIZE", 1))
 db_max_overflow = int(os.environ.get("DB_MAX_OVERFLOW", 10))
 
 engine = create_async_engine(
-    db_url, pool_size=db_pool_size,
-    max_overflow=db_max_overflow,
-    pool_pre_ping=True,
+    db_url, pool_size=db_pool_size, max_overflow=db_max_overflow
 )
 
 null_pool_db_engine = create_async_engine(
     db_url,
-    poolclass=NullPool,
+    poolclass=NullPool,  # <— здесь
     echo=False,
     future=True
 )
@@ -68,7 +66,7 @@ async def get_s3_client() -> S3Client:
         access_key="minioadmin",
         secret_key="minioadmin",
         service_url="http://app:8000",
-        s3_url="0.0.0.0:9000",
+        s3_url="minio:9000",
     )
 
 
@@ -99,11 +97,9 @@ async def get_audio_ai_client() -> WhisperAIClient:
 
 async def get_audio_convert_service(
     audio_ai_client: Annotated[WhisperAIClient, Depends(get_audio_ai_client)],
-    user_file_service: Annotated[UserFileService, Depends(get_user_file_service)]
 ) -> AudioConvertService:
     return AudioConvertService(
         audio_ai_client=audio_ai_client,
-        user_file_service=user_file_service
     )
 
 
@@ -249,10 +245,7 @@ async def get_openai_client() -> OpenAIClient:
     return OpenAIClient(
         api_key=settings.OPENAI_API_KEY,
         model=settings.OPENAI_MODEL,
-        client=OpenAI(
-            api_key=settings.OPENAI_API_KEY,
-            http_client=httpx.Client(proxy=settings.PROXY_URL)
-        ),
+        client=OpenAI(api_key=settings.OPENAI_API_KEY, http_client=httpx.Client(proxy="http://h1n8FUKAJ6:HnY08vEgSz@elr1c.ru:40832")),
     )
 
 

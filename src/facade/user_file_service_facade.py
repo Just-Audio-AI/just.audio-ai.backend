@@ -22,7 +22,7 @@ class FileServiceFacade:
                 bucket_name="public-file",
                 access_key="minioadmin",
                 secret_key="minioadmin",
-                service_url="http://app:8000",
+                service_url="http://0.0.0.0:8000",
                 s3_url="minio:9000",
             )
         )

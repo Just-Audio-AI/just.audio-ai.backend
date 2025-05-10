@@ -19,7 +19,6 @@ class UserFileBase(BaseModel):
 
 class UserFileDetail(UserFileBase):
     transcription: dict | None = None
-    transcription_status: str | None = None
     transcription_text: str | None = None
     transcription_vtt: str | None = None
     transcription_srt: str | None = None
@@ -30,8 +29,6 @@ class UserFileDetail(UserFileBase):
     removed_noise_file_status: str | None = None
     removed_vocal_file_status: str | None = None
     removed_melody_file_status: str | None = None
-    improved_audio_file_status: str | None = None
-    improved_audio_file_url: str | None = None
 
 
 class UserFileListResponse(BaseModel):

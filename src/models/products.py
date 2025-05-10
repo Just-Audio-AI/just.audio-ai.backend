@@ -86,8 +86,7 @@ class UserProducts(Base):
 
     uuid: Mapped[UUID] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
-    minute_count: Mapped[float] = mapped_column(default=0, comment="Использовано минут за все время подписки")
-    minute_count_used: Mapped[float] = mapped_column(default=0, comment="Использовано минут в месяц")
+    minute_count: Mapped[float] = mapped_column(default=0)
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
     amount: Mapped[float] = mapped_column(default=0, comment="Сумма оплаты")
 

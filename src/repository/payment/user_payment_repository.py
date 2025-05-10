@@ -43,13 +43,6 @@ class UserPaymentRepository:
         result = await self.db.execute(query)
         return result.one()
 
-    async def get_transaction_by_ext_id(
-        self,
-        external_id: str
-    ) -> Transactions:
-        query = select(Transactions).where(Transactions.external_transaction_id == external_id)
-        return await self.db.scalar(query)
-
     async def create_transaction(
         self,
         uuid: UUID,

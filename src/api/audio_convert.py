@@ -15,7 +15,7 @@ from fastapi import (
     HTTPException,
     UploadFile,
     status,
-    BackgroundTasks, Query,
+    BackgroundTasks,
 )
 from fastapi.responses import FileResponse, Response, JSONResponse
 
@@ -26,7 +26,7 @@ from src.dependency import (
     get_user_products_service,
     get_current_user_id,
 )
-from src.models.enums import FileProcessingStatus, FileTranscriptionStatus, FileImproveAudioStatus
+from src.models.enums import FileProcessingStatus
 from src.schemas.file import FileTranscriptionRequest
 from src.service.audio_convert_service import AudioConvertService
 from src.settings import settings
@@ -34,7 +34,7 @@ from src.settings import settings
 from src.service.file_service import FileService
 from src.service.user_file_service import UserFileService
 from src.service.user_products_service import UserProductsService
-from src.celery.tasks import process_audio, enhance_audio_task
+from src.celery.tasks import process_audio
 
 router = APIRouter(prefix="/audio/convert/file", tags=["audio-convert"])
 
@@ -46,7 +46,6 @@ async def upload_file(
     current_user_id: Annotated[int, Depends(get_current_user_id)],
     file_service: Annotated[FileService, Depends(get_file_service)],
     user_file_service: Annotated[UserFileService, Depends(get_user_file_service)],
-    user_product_service: Annotated[UserProductsService, Depends(get_user_products_service)],
     file: UploadFile = File(...),
 ):
     # Validate file extension
@@ -88,7 +87,7 @@ async def upload_file(
         # Get file duration using ffmpeg
         try:
             probe = ffmpeg.probe(final_file_path)
-            duration_seconds = float(probe["format"]["duration"])
+            duration_seconds = int(float(probe["format"]["duration"]))
         except ffmpeg.Error as e:
             # If duration detection fails, log but continue
             logging.warning(f"Error detecting file duration: {str(e)}")
@@ -123,7 +122,6 @@ async def upload_file(
             await user_file_service.update_file_duration(
                 file_record.id, duration_seconds
             )
-            await user_product_service.deduct_minutes(user_id=current_user_id, seconds_used=duration_seconds)
 
         return JSONResponse(
             status_code=status.HTTP_201_CREATED,
@@ -155,9 +153,6 @@ async def launch_transcription(
     await user_file_service.update_files_status(
         body.file_ids, FileProcessingStatus.PROCESSING
     )
-    await user_file_service.update_files_transcription_status(
-        body.file_ids, FileTranscriptionStatus.PROCESSING
-    )
 
     # Add transcription tasks to background tasks
     for user_file in user_files:
@@ -166,7 +161,6 @@ async def launch_transcription(
 
         background_tasks.add_task(
             audio_convert_service.convert_audio_to_text,
-            file_id=user_file.id,
             audio_file_url=audio_file_url,
             response_format="verbose_json",
             language=None,  # Auto-detect language
@@ -210,6 +204,9 @@ async def callback_whishper(
     result: dict | str,
     user_file_service: Annotated[UserFileService, Depends(get_user_file_service)],
     file_service: Annotated[FileService, Depends(get_file_service)],
+    user_products_service: Annotated[
+        UserProductsService, Depends(get_user_products_service)
+    ],
 ) -> Response:
     file_url = f"{user_id}/{file_name}"
 
@@ -243,10 +240,17 @@ async def callback_whishper(
         transcription_vtt=transcription_vtt,
         transcription_srt=transcription_srt
     )
-    await user_file_service.update_files_transcription_status(
-        file_ids=[user_file.id],
-        status=FileTranscriptionStatus.COMPLETED
-    )
+
+    # Deduct minutes from user's balance if file has duration
+    if user_file.duration and user_file.duration > 0:
+        try:
+            await user_products_service.deduct_minutes(
+                user_id=int(user_id), seconds_used=user_file.duration
+            )
+        except ValueError as e:
+            # Log the error but don't fail the request
+            logging.error(f"Error deducting minutes: {str(e)}")
+
     # Delete the audio file from S3
     try:
         await file_service.delete_file_from_s3(user_id, file_name)
@@ -451,62 +455,6 @@ async def remove_vocals_from_audio(
         status_code=status.HTTP_202_ACCEPTED,
         content={
             "message": "Vocals removal started (extracting instrumental)",
-            "file_id": file_id,
-            "status": FileProcessingStatus.PROCESSING.value,
-        },
-    )
-
-
-@router.post("/enhance-audio/{file_id}", status_code=status.HTTP_202_ACCEPTED)
-async def enhance_audio(
-    file_id: int,
-    current_user_id: Annotated[int, Depends(get_current_user_id)],
-    user_file_service: Annotated[UserFileService, Depends(get_user_file_service)],
-    enhance_preset: str = Query(...),
-):
-    """
-    Process audio file to enhance audio quality.
-    """
-    # Get file info
-    user_files = await user_file_service.get_user_file(current_user_id, [file_id])
-    if not user_files:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="File not found or you don't have access to it",
-        )
-
-    user_file = user_files[0]  # Get first file since we queried by single ID
-
-    # Update file status to processing
-    await user_file_service.update_files_status(
-        [file_id], FileProcessingStatus.PROCESSING
-    )
-
-    try:
-        # Launch Celery task to process the audio
-        enhance_audio_task.apply_async(
-            args=[file_id, current_user_id, user_file.file_url, enhance_preset],
-            queue="enhance",
-        )
-    except Exception as e:
-        # В случае ошибки запуска Celery-задачи, устанавливаем статус FAILED
-        from src.models.enums import FileRemoveVocalStatus
-        await user_file_service.update_enhance_audio_status(file_id, status=FileImproveAudioStatus.FAILED)
-        await user_file_service.update_files_status([file_id], FileProcessingStatus.COMPLETED)
-
-        # Логируем ошибку
-        logging.error(f"Failed to start enhance audio task: {str(e)}")
-
-        # Возвращаем ошибку клиенту
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to start audio processing",
-        )
-
-    return JSONResponse(
-        status_code=status.HTTP_202_ACCEPTED,
-        content={
-            "message": "Enhance audio started)",
             "file_id": file_id,
             "status": FileProcessingStatus.PROCESSING.value,
         },

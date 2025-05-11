@@ -114,7 +114,7 @@ async def upload_file(
         file_record = await user_file_service.create_user_file(
             current_user_id,
             uploaded_file_url,
-            status=FileProcessingStatus.UPLOADED.value,
+            status=FileProcessingStatus.PROCESSING.value,
             display_filename=display_filename,
         )
 

@@ -68,7 +68,7 @@ async def get_s3_client() -> S3Client:
         access_key="minioadmin",
         secret_key="minioadmin",
         service_url="http://app:8000",
-        s3_url="0.0.0.0:9000",
+        s3_url="minio:9000",
     )
 
 
